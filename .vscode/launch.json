@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": ".NET MAUI",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/game-client/bin/Debug/net8.0-maccatalyst/maccatalyst-x64/game-client.app/Contents/MacOS/game-client",
+      "args": [],
+      "cwd": "${workspaceFolder}/game-client",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  ]
+}

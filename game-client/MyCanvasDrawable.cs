@@ -4,8 +4,24 @@ namespace game_client;
 
 public class MyCanvasDrawable : IDrawable
 {
+    public Color RectangleColor { get; set; } = Colors.Blue;
+    public void ToggleRectangleColor()
+    {
+        Console.WriteLine($"ToggleRectangleColor, before = {RectangleColor}");
+        if (RectangleColor != Colors.Blue)
+        {
+            RectangleColor = Colors.Blue;
+        }
+        else
+        {
+            RectangleColor = Colors.Green;
+        }
+        Console.WriteLine($"ToggleRectangleColor, after = {RectangleColor}");
+    }
+
     public void Draw(ICanvas canvas, RectF dirtyRect)
     {
+        Console.WriteLine($"drawing, RectangleColor = {RectangleColor}");
         // Set the stroke and fill color
         canvas.StrokeColor = Colors.Black;
         canvas.StrokeSize = 2;
@@ -14,7 +30,7 @@ public class MyCanvasDrawable : IDrawable
         canvas.DrawLine(0, 0, 400, 400);
 
         // Draw a rectangle
-        canvas.FillColor = Colors.Blue;
+        canvas.FillColor = RectangleColor;
         canvas.FillRectangle(50, 50, 100, 100);
 
         // Draw a circle

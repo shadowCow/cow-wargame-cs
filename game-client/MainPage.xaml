@@ -12,7 +12,8 @@
             HorizontalOptions="FillAndExpand"
             VerticalOptions="FillAndExpand"
             Drawable="{Binding Drawable}"
-            BackgroundColor="LightGray" />
+            BackgroundColor="LightGray">
+        </GraphicsView>
     </Grid>
 
 </ContentPage>
