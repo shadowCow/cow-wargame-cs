@@ -6,6 +6,7 @@ namespace game_client;
 public class MyCanvasDrawable : IDrawable
 {
     public Color RectangleColor { get; set; } = Colors.Blue;
+    private readonly float borderSize = 20f;
     public void ToggleRectangleColor()
     {
         Console.WriteLine($"ToggleRectangleColor, before = {RectangleColor}");
@@ -27,35 +28,22 @@ public class MyCanvasDrawable : IDrawable
         canvas.StrokeColor = Colors.Black;
         canvas.StrokeSize = 2;
 
-        // Draw a simple line
-        canvas.DrawLine(0, 0, 400, 400);
-
-        // Draw a rectangle
-        canvas.FillColor = RectangleColor;
-        canvas.FillRectangle(50, 50, 100, 100);
-
-        // Draw a circle
-        canvas.FillColor = Colors.Red;
-        canvas.FillCircle(100, 550, 50);
-
-        // Draw text
-        canvas.FontSize = 24;
-        canvas.FontColor = Colors.Black;
-        canvas.DrawString("Hello, MAUI!", 150, 300, 200, 100, HorizontalAlignment.Center, VerticalAlignment.Center);
-
-        DrawHexgrid(canvas);
+        DrawHexgrid(canvas, dirtyRect);
     }
 
-    void DrawHexgrid(ICanvas canvas)
+    void DrawHexgrid(ICanvas canvas, RectF dirtyRect)
     {
         int numCols = 6;
         int numRows = 5;
         Hexgrid<Coords> hexgrid = new Hexgrid<Coords>(numCols, numRows);
 
-        float hexRadius = 50f;
+        float availableWidth = dirtyRect.Width - 2 * borderSize;
+        float availableHeight = dirtyRect.Height - 2 * borderSize;
+
+        float hexRadius = ComputeHexRadiusSoGridFillsSpace(numCols, numRows, availableWidth, availableHeight);
         float hexApothem = (float)(Math.Sqrt(3) / 2) * hexRadius;
-        float firstCx = 500f;
-        float firstCy = 100f;
+        float firstCx = borderSize + hexRadius;
+        float firstCy = borderSize + hexApothem;
 
         float cxToCx = hexRadius * 1.5f;
 
@@ -108,4 +96,29 @@ public class MyCanvasDrawable : IDrawable
         canvas.StrokeSize = 2;
         canvas.DrawPath(path);
     }
+
+    float ComputeHexRadiusSoGridFillsSpace(int numCols, int numRows, float availableWidth, float availableHeight)
+    {
+        float maxHexHeight = availableHeight / (numRows + 0.5f);
+        float maxHexWidth = availableWidth / numCols;
+
+        float maxRadiusFromMaxWidth = maxHexWidth / 2;
+        float maxRadiusFromMaxHeight = maxHexHeight / (float)Math.Sqrt(3f);
+        
+        return Math.Min(maxRadiusFromMaxWidth, maxRadiusFromMaxHeight);
+    }
+
+    /*
+    To render the game world, with a zoom-able, move-able camera...
+
+    I need to do...
+
+    GameState -> GameWorld
+
+    GameWorld will consist of 'drawables', which have world positions and sizes.
+    E.g. lengths in meters. drawables are things like 'lines' or 'paths', etc.
+
+    Then we have a camera. camera is positioned relative to the game world.
+    camera can zoom, pan, and move.
+    */
 }
