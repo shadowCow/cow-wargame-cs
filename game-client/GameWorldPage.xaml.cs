@@ -1,12 +1,15 @@
 ﻿namespace game_client;
 
-public partial class MainPage : ContentPage
+public partial class GameWorldPage : ContentPage
 {
 	public MyCanvasDrawable Drawable { get; private set; }
 
-	public MainPage()
+	public GameWorldPage()
 	{
 		InitializeComponent();
+
+		NavigationPage.SetHasBackButton(this, false);
+		NavigationPage.SetHasNavigationBar(this, false);
 
 		Drawable = new MyCanvasDrawable();
 		DrawingCanvas.Drawable = Drawable;
