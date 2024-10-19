@@ -35,17 +35,23 @@ public class MyCanvasDrawable : IDrawable
     {
         int numCols = 6;
         int numRows = 5;
-        Hexgrid<Coords> hexgrid = new Hexgrid<Coords>(numCols, numRows);
+        Hexgrid<Coords> hexgrid = new(numCols, numRows);
 
         float availableWidth = dirtyRect.Width - 2 * borderSize;
         float availableHeight = dirtyRect.Height - 2 * borderSize;
 
-        float hexRadius = ComputeHexRadiusSoGridFillsSpace(numCols, numRows, availableWidth, availableHeight);
-        float hexApothem = (float)(Math.Sqrt(3) / 2) * hexRadius;
-        float firstCx = borderSize + hexRadius;
-        float firstCy = borderSize + hexApothem;
+        float radius = ComputeHexRadiusSoGridFillsSpace(numCols, numRows, availableWidth, availableHeight);
+        float apothem = (float)(Math.Sqrt(3) / 2) * radius;
+        float cxToCx = radius * 1.5f;
 
-        float cxToCx = hexRadius * 1.5f;
+        float gridWidth = (numCols - 1) * cxToCx + 2 * radius;
+        float gridHeight = (apothem * 2 * numRows) + apothem;
+
+        float widthInset = (availableWidth - gridWidth) / 2;
+        float heightInset = (availableHeight - gridHeight) / 2;
+
+        float firstCx = borderSize + widthInset + radius;
+        float firstCy = borderSize + heightInset + apothem;
 
         float cx = firstCx - cxToCx;
         for (var c = 0; c < numCols; c++)
@@ -53,14 +59,14 @@ public class MyCanvasDrawable : IDrawable
             cx += cxToCx;
             for (var r = 0; r < numRows; r++)
             {
-                float cy = firstCy + (hexApothem*2) * r;
+                float cy = firstCy + (apothem*2) * r;
                 if (c % 2 != 0)
                 {
-                    cy += hexApothem;
+                    cy += apothem;
                 }
                 Console.WriteLine($"c,r: {c},{r}  cx,cy: {cx},{cy}");
 
-                DrawHex(canvas, cx, cy, hexRadius);
+                DrawHex(canvas, cx, cy, radius);
             }
         }
     }
@@ -91,9 +97,11 @@ public class MyCanvasDrawable : IDrawable
         // Close the hexagon by connecting the last point to the first point
         path.Close();
 
-        // Draw the hexagon path on the canvas
+        canvas.FillColor = Colors.Green;
+        canvas.FillPath(path);
+        
         canvas.StrokeColor = Colors.Black;
-        canvas.StrokeSize = 2;
+        canvas.StrokeSize = 2;        
         canvas.DrawPath(path);
     }
 
