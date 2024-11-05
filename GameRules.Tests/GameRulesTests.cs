@@ -1,4 +1,5 @@
 
+using System.Runtime.CompilerServices;
 using CowFst;
 
 namespace GameRules.Tests;
@@ -20,9 +21,53 @@ public class GameRulesTests
     }
 
     [Fact]
-    public void TestPlayerOneTurn()
+    public void TestPlayerCanAttackAdjacentEnemyTile()
     {
 
+    }
+
+    [Fact]
+    public void TestEndAttackingPhase()
+    {
+        var (gameFst, player1Id, player2Id) = Given.ANewGame();
+
+        var result = When.PlayerEndsAttackingPhase(gameFst, player1Id);
+
+        Then.ResultIsPlayerEndedAttackPhase(result, player1Id);
+        Then.TurnIsPlayer1(gameFst.GetState());
+        Then.TurnPhaseIsReinforcing(gameFst.GetState());
+        Then.GameIsOngoing(gameFst.GetState());
+    }
+
+    [Fact]
+    public void TestPlayerCanReinforceUnoccupiedTile()
+    {
+
+    }
+
+    [Fact]
+    public void TestPlayerCanReinforceOwnTile()
+    {
+
+    }
+
+    [Fact]
+    public void TestEndReinforcingPhase()
+    {
+        var (gameFst, player1Id, player2Id) = Given.ANewGame();
+
+        var result = When.PlayerEndsReinforcingPhase(gameFst, player1Id);
+
+        Then.ResultIsPlayerEndedReinforcingPhase(result, player1Id);
+        Then.TurnIsPlayer2(gameFst.GetState());
+        Then.TurnPhaseIsAttacking(gameFst.GetState());
+        Then.GameIsOngoing(gameFst.GetState());
+    }
+
+    [Fact]
+    public void TestPlayerOneTurn()
+    {
+        
     }
 
     [Fact]
@@ -40,13 +85,24 @@ public class GameRulesTests
     [Fact]
     public void PlayerCanResign()
     {
+        var (gameFst, player1Id, player2Id) = Given.ANewGame();
 
+        var result = When.PlayerResigns(gameFst, player1Id);
+
+        Then.ResultIsPlayerResigned(result, player1Id);
+        Then.GameIsOverWithWinner(gameFst.GetState(), player2Id);
     }
 
     [Fact]
     public void PlayerCannotResignOutOfTurn()
     {
+        var (gameFst, player1Id, player2Id) = Given.ANewGame();
+        var originalState = gameFst.GetState();
 
+        var result = When.PlayerResigns(gameFst, player2Id);
+
+        Then.ResultIsOutOfTurnError(result, player2Id);
+        Then.GameStateIsUnchanged(originalState, gameFst.GetState());
     }
 
     [Fact]
@@ -57,6 +113,12 @@ public class GameRulesTests
 
     [Fact]
     public void PlayerCannotAttackUnoccupiedTile()
+    {
+
+    }
+
+    [Fact]
+    public void PlayerCannotAttackNonAdjacentEnemyTile()
     {
 
     }
@@ -99,7 +161,20 @@ internal static class Given
 
 internal static class When
 {
+    internal static Result<GameEvent, GameError> PlayerEndsAttackingPhase(GameFst gameFst, string playerId)
+    {
+        return gameFst.HandleCommand(new GameAction.EndAttackPhase(playerId));
+    }
 
+    internal static object PlayerEndsReinforcingPhase(GameFst gameFst, string playerId)
+    {
+        return gameFst.HandleCommand(new GameAction.EndReinforcePhase(playerId));
+    }
+
+    internal static object PlayerResigns(GameFst gameFst, string playerId)
+    {
+        return gameFst.HandleCommand(new GameAction.Resign(playerId));
+    }
 }
 
 internal static class Then
@@ -107,6 +182,16 @@ internal static class Then
     internal static void GameIsOngoing(GameState gameState)
     {
         Assert.Equal(new GameStatus.Ongoing(), gameState.Status);
+    }
+
+    internal static void GameIsOverWithWinner(GameState gameState, string playerId)
+    {
+        Assert.Equal(new GameStatus.Completed(new GameOutcome.Winner(playerId)), gameState.Status);
+    }
+
+    internal static void GameStateIsUnchanged(GameState originalState, GameState gameState)
+    {
+        Assert.Equal(originalState, gameState);
     }
 
     internal static void Player1Is(GameState gameState, string player1Id)
@@ -119,13 +204,79 @@ internal static class Then
         Assert.Equal(player2Id, gameState.Player2Id);
     }
 
+    internal static void ResultIsOutOfTurnError(object result, string playerId)
+    {
+        var expectedError = new GameError.OutOfTurnError(playerId);
+        switch (result)
+        {
+            case Result<GameEvent, GameError>.Err e:
+                Assert.Equal(expectedError, e.Error);
+                break;
+            default:
+                Assert.Fail($"expected Result.Err, but was Result.Success: ${result}");
+                break;
+        }
+    }
+
+    internal static void ResultIsPlayerEndedAttackPhase(Result<GameEvent, GameError> result, string playerId)
+    {
+        var expectedEvent = new GameEvent.PlayerEndedAttackPhase(playerId);
+        switch (result)
+        {
+            case Result<GameEvent, GameError>.Success s:
+                Assert.Equal(expectedEvent, s.Value);
+                break;
+            default:
+                Assert.Fail($"expected Result.Success, but was Result.Err: ${result}");
+                break;
+        }
+    }
+
+    internal static void ResultIsPlayerEndedReinforcingPhase(object result, string playerId)
+    {
+        var expectedEvent = new GameEvent.PlayerEndedReinforcePhase(playerId);
+        switch (result)
+        {
+            case Result<GameEvent, GameError>.Success s:
+                Assert.Equal(expectedEvent, s.Value);
+                break;
+            default:
+                Assert.Fail($"expected Result.Success, but was Result.Err: ${result}");
+                break;
+        }
+    }
+
+    internal static void ResultIsPlayerResigned(object result, string playerId)
+    {
+        var expectedEvent = new GameEvent.PlayerResigned(playerId);
+        switch (result)
+        {
+            case Result<GameEvent, GameError>.Success s:
+                Assert.Equal(expectedEvent, s.Value);
+                break;
+            default:
+                Assert.Fail($"expected Result.Success, but was Result.Err: ${result}");
+                break;
+        }
+    }
+
     internal static void TurnIsPlayer1(GameState gameState)
     {
         Assert.Equal(Given.Player1Id, gameState.PlayerIdForCurrentTurn);
     }
 
+    internal static void TurnIsPlayer2(GameState gameState)
+    {
+        Assert.Equal(Given.Player2Id, gameState.PlayerIdForCurrentTurn);
+    }
+
     internal static void TurnPhaseIsAttacking(GameState gameState)
     {
         Assert.Equal(TurnPhase.Attacking, gameState.TurnPhase);
+    }
+
+    internal static void TurnPhaseIsReinforcing(GameState gameState)
+    {
+        Assert.Equal(TurnPhase.Reinforcing, gameState.TurnPhase);
     }
 }
