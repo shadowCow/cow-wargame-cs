@@ -1,11 +1,28 @@
 namespace GameRules;
 
-public abstract record Tile
+public record Tile(
+    TileOwner Owner,
+    TileTerrain Terrain,
+    int NumUnits
+)
 {
-    private Tile() {}
+    public static Tile Create(TileTerrain terrain)
+    {
+        return new Tile(TileOwner.Unowned, terrain, 0);
+    }
+}
 
-    public sealed record Grassland() : Tile;
-    public sealed record Water() : Tile;
-    public sealed record Forest() : Tile;
-    public sealed record Mountain() : Tile;
+public enum TileOwner
+{
+    Unowned,
+    Player1,
+    Player2,
+}
+
+public enum TileTerrain
+{
+    Grassland,
+    Forest,
+    Mountain,
+    Water,
 }

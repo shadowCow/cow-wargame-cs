@@ -27,6 +27,19 @@ public static class GameRules
         );
     }
 
+    public static Fst<GameState, GameAction, GameEvent, GameError, GameContext> CreateFst(
+        GameState initialState)
+    {
+        var context = new GameContext();
+
+        return new Fst<GameState, GameAction, GameEvent, GameError, GameContext>(
+            HandleCommand,
+            Transition,
+            context,
+            initialState
+        );
+    }
+
     public static Result<GameEvent, GameError> HandleCommand(
         GameState state,
         GameAction action,
@@ -60,7 +73,48 @@ public static class GameRules
 
     private static Result<GameEvent, GameError> HandleReinforce(GameState state, GameAction.Reinforce a, GameContext context)
     {
-        throw new NotImplementedException();
+        if (state.PlayerIdForCurrentTurn != a.PlayerId)
+        {
+            return OutOfTurnResult(a.PlayerId);
+        }
+        if (state.TurnPhase != TurnPhase.Reinforcing)
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.ActionOutOfPhase(a.PlayerId, state.TurnPhase));
+        }
+
+        var fromTile = state.Hexgrid.GetTileAt(a.From.Q, a.From.R);
+        var toTile = state.Hexgrid.GetTileAt(a.To.Q, a.To.R);
+
+        if (fromTile is null)
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.TileOutOfBounds(a.From));
+        }
+        if (toTile is null)
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.TileOutOfBounds(a.To));
+        }
+        if (fromTile.Owner == TileOwner.Unowned)
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.ReinforceInvalidFrom(a.PlayerId, a.From));
+        }
+        if (fromTile.Owner == TileOwner.Player1 && !state.IsPlayer1Turn())
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.ReinforceInvalidFrom(a.PlayerId, a.From));
+        }
+        if (fromTile.Owner == TileOwner.Player2 && !state.IsPlayer2Turn())
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.ReinforceInvalidFrom(a.PlayerId, a.From));
+        }
+        if (toTile.Owner != TileOwner.Unowned && toTile.Owner != fromTile.Owner)
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotReinforceToOpponentTile(a.PlayerId, a.To));
+        }
+        // if (!state.Hexgrid.AreNeighbors(a.From, a.To))
+        // {
+        //     return new Result<GameEvent, GameError>.Err(new GameError.CannotReinforceNonAdjacentTile(a.PlayerId, a.To));
+        // }
+
+        return new Result<GameEvent, GameError>.Success(new GameEvent.PlayerReinforced(a.PlayerId, a.From, a.To, a.Quantity));
     }
 
     private static Result<GameEvent, GameError> HandleEndReinforcePhase(GameState state, GameAction.EndReinforcePhase a, GameContext context)
@@ -115,7 +169,16 @@ public static class GameRules
 
     private static GameState ApplyPlayerReinforced(GameState state, GameEvent.PlayerReinforced e)
     {
-        throw new NotImplementedException();
+        var fromTile = state.Hexgrid.GetTileAt(e.From.Q, e.From.R);
+        var toTile = state.Hexgrid.GetTileAt(e.To.Q, e.To.R);
+
+        var newFromQuantity = fromTile.NumUnits - e.Quantity;
+        var newToQuantity = toTile.NumUnits + e.Quantity;
+
+        state.Hexgrid.SetTileAt(e.From.Q, e.From.R, fromTile with { NumUnits = newFromQuantity });
+        state.Hexgrid.SetTileAt(e.To.Q, e.To.R, toTile with { NumUnits = newToQuantity });
+
+        return state;
     }
 
     private static GameState ApplyPlayerEndedReinforcePhase(GameState state, GameEvent.PlayerEndedReinforcePhase e)
@@ -148,7 +211,18 @@ public record GameState(
     string PlayerIdForCurrentTurn,
     TurnPhase TurnPhase,
     Hexgrid<Tile> Hexgrid,
-    GameStatus Status);
+    GameStatus Status)
+{
+    public bool IsPlayer1Turn()
+    {
+        return PlayerIdForCurrentTurn == Player1Id;
+    }
+
+    public bool IsPlayer2Turn()
+    {
+        return !IsPlayer1Turn();
+    }
+}
 
 public enum TurnPhase
 {
@@ -203,8 +277,12 @@ public abstract record GameError
     public sealed record InvalidAttackFrom(string PlayerId, Coords From) : GameError;
     public sealed record InvalidAttackTo(string PlayerId, Coords To) : GameError;
     public sealed record ReinforceFromInsufficientQuantity(string PlayerId) : GameError;
-    public sealed record ReinforceInvalidFrom(string PlayerId) : GameError;
+    public sealed record ReinforceInvalidFrom(string PlayerId, Coords Coords) : GameError;
     public sealed record ReinforceInvalidTo(string PlayerId) : GameError;
+    public sealed record CannotReinforceNonAdjacentTile(string PlayerId, Coords To) : GameError;
+    public sealed record CannotReinforceToOpponentTile(string PlayerId, Coords To) : GameError;
+    public sealed record TileOutOfBounds(Coords Coords) : GameError;
+    public sealed record ActionOutOfPhase(string PlayerId, TurnPhase CurrentPhase) : GameError;
 }
 
 public record GameContext();
