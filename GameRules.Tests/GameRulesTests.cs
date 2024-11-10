@@ -10,10 +10,10 @@ public class GameRulesTests
     [Fact]
     public void TestGameSetup()
     {
-        var (gameFst, player1Id, player2Id) = Given.ANewGame();
+        var gameFst = Given.ANewGame();
 
-        Then.Player1Is(gameFst.GetState(), player1Id);
-        Then.Player2Is(gameFst.GetState(), player2Id);
+        Then.Player1Is(gameFst.GetState(), Given.Player1Id);
+        Then.Player2Is(gameFst.GetState(), Given.Player2Id);
         Then.GameIsOngoing(gameFst.GetState());
         Then.TurnIsPlayer1(gameFst.GetState());
         Then.TurnPhaseIsAttacking(gameFst.GetState());
@@ -22,35 +22,74 @@ public class GameRulesTests
     [Fact]
     public void TestPlayerCanAttackAdjacentEnemyTile()
     {
+        var gameFst = Given.AFullBoardInAttackPhase();
 
+        var attackAction = new GameAction.Attack(Given.Player1Id, new Coords(1, 0), new Coords(2, 0));
+        var result = When.PlayerAttacks(gameFst, attackAction);
+
+        Then.ResultIsPlayerAttacked(result, attackAction);
+        Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.From, 2);
+        Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.To, 2);
     }
 
     [Fact]
     public void PlayerCannotAttackOwnTile()
     {
+        var gameFst = Given.ANewGame();
 
+        var result = When.PlayerAttacks(gameFst, new GameAction.Attack(Given.Player1Id, new Coords(0, 0), new Coords(0, 0)));
+
+        Then.ResultIsCannotAttackOwnTile(result, Given.Player1Id, new Coords(0, 0));
     }
 
     [Fact]
     public void PlayerCannotAttackUnoccupiedTile()
     {
+        var gameFst = Given.ANewGame();
 
+        var result = When.PlayerAttacks(gameFst, new GameAction.Attack(Given.Player1Id, new Coords(0, 0), new Coords(0, 1)));
+
+        Then.ResultIsCannotAttackUnownedTile(result, Given.Player1Id, new Coords(0, 1));
     }
 
     [Fact]
     public void PlayerCannotAttackNonAdjacentEnemyTile()
     {
+        var gameFst = Given.ANewGame();
 
+        var result = When.PlayerAttacks(gameFst, new GameAction.Attack(Given.Player1Id, new Coords(0, 0), new Coords(2, 1)));
+
+        Then.ResultIsCannotAttackNonAdjacentTile(result, Given.Player1Id, new Coords(2, 1));
+    }
+
+    [Fact]
+    public void PlayerCannotAttackFromUnownedTile()
+    {
+        var gameFst = Given.ANewGame();
+
+        var result = When.PlayerAttacks(gameFst, new GameAction.Attack(Given.Player1Id, new Coords(1, 1), new Coords(2, 1)));
+
+        Then.ResultIsMustAttackFromTileYouOwn(result, Given.Player1Id, new Coords(1, 1));
+    }
+
+    [Fact]
+    public void PlayerCannotAttackFromOpponentTile()
+    {
+        var gameFst = Given.AFullBoardInAttackPhase();
+
+        var result = When.PlayerAttacks(gameFst, new GameAction.Attack(Given.Player1Id, new Coords(2, 0), new Coords(2, 1)));
+
+        Then.ResultIsMustAttackFromTileYouOwn(result, Given.Player1Id, new Coords(2, 0));
     }
 
     [Fact]
     public void TestEndAttackingPhase()
     {
-        var (gameFst, player1Id, player2Id) = Given.ANewGame();
+        var gameFst = Given.ANewGame();
 
-        var result = When.PlayerEndsAttackingPhase(gameFst, player1Id);
+        var result = When.PlayerEndsAttackingPhase(gameFst, Given.Player1Id);
 
-        Then.ResultIsPlayerEndedAttackPhase(result, player1Id);
+        Then.ResultIsPlayerEndedAttackPhase(result, Given.Player1Id);
         Then.TurnIsPlayer1(gameFst.GetState());
         Then.TurnPhaseIsReinforcing(gameFst.GetState());
         Then.GameIsOngoing(gameFst.GetState());
@@ -171,11 +210,11 @@ public class GameRulesTests
     [Fact]
     public void TestEndReinforcingPhase()
     {
-        var (gameFst, player1Id, player2Id) = Given.ANewGame();
+        var gameFst = Given.ANewGame();
 
-        var result = When.PlayerEndsReinforcingPhase(gameFst, player1Id);
+        var result = When.PlayerEndsReinforcingPhase(gameFst, Given.Player1Id);
 
-        Then.ResultIsPlayerEndedReinforcingPhase(result, player1Id);
+        Then.ResultIsPlayerEndedReinforcingPhase(result, Given.Player1Id);
         Then.TurnIsPlayer2(gameFst.GetState());
         Then.TurnPhaseIsAttacking(gameFst.GetState());
         Then.GameIsOngoing(gameFst.GetState());
@@ -184,24 +223,30 @@ public class GameRulesTests
     [Fact]
     public void PlayerCanResign()
     {
-        var (gameFst, player1Id, player2Id) = Given.ANewGame();
+        var gameFst = Given.ANewGame();
 
-        var result = When.PlayerResigns(gameFst, player1Id);
+        var result = When.PlayerResigns(gameFst, Given.Player1Id);
 
-        Then.ResultIsPlayerResigned(result, player1Id);
-        Then.GameIsOverWithWinner(gameFst.GetState(), player2Id);
+        Then.ResultIsPlayerResigned(result, Given.Player1Id);
+        Then.GameIsOverWithWinner(gameFst.GetState(), Given.Player2Id);
     }
 
     [Fact]
     public void PlayerCannotResignOutOfTurn()
     {
-        var (gameFst, player1Id, player2Id) = Given.ANewGame();
+        var gameFst = Given.ANewGame();
         var originalState = gameFst.GetState();
 
-        var result = When.PlayerResigns(gameFst, player2Id);
+        var result = When.PlayerResigns(gameFst, Given.Player2Id);
 
-        Then.ResultIsOutOfTurnError(result, player2Id);
+        Then.ResultIsOutOfTurnError(result, Given.Player2Id);
         Then.GameStateIsUnchanged(originalState, gameFst.GetState());
+    }
+
+    [Fact]
+    public void PlayerWinsWhenOpponentIsEliminated()
+    {
+
     }
 
     [Fact]
@@ -228,9 +273,9 @@ internal static class Given
     public const string Player1Id = "p1";
     public const string Player2Id = "p2";
 
-    internal static (GameFst gameFst, string player1Id, string player2Id) ANewGame()
+    internal static GameFst ANewGame()
     {
-        return (GameRules.CreateFst(Player1Id, Player2Id, GameMaps.TinyGrassland()), Player1Id, Player2Id);
+        return GameRules.CreateFst(Player1Id, Player2Id, GameMaps.TinyGrassland());
     }
 
     internal static GameFst ANewGameInReinforcePhase()
@@ -271,10 +316,28 @@ internal static class Given
 
         return GameRules.CreateFst(state);
     }
+
+    internal static GameFst AFullBoardInAttackPhase()
+    {
+        var state = new GameState(
+            Player1Id,
+            Player2Id,
+            Player1Id,
+            TurnPhase.Attacking,
+            GameMaps.TinyGrasslandFullyPopulated(),
+            new GameStatus.Ongoing());
+
+        return GameRules.CreateFst(state);
+    }
 }
 
 internal static class When
 {
+    internal static object PlayerAttacks(GameFst gameFst, GameAction.Attack attack)
+    {
+        return gameFst.HandleCommand(attack);
+    }
+
     internal static Result<GameEvent, GameError> PlayerEndsAttackingPhase(GameFst gameFst, string playerId)
     {
         return gameFst.HandleCommand(new GameAction.EndAttackPhase(playerId));
@@ -331,107 +394,62 @@ internal static class Then
         Assert.Equal(player2Id, gameState.Player2Id);
     }
 
+    internal static void ResultIsCannotAttackOwnTile(object result, string playerId, Coords to)
+    {
+        var expectedError = new GameError.CannotAttackOwnTile(playerId, to);
+        ExpectError(result, expectedError);
+    }
+
     internal static void ResultIsCannotReinforceNonAdjacentTile(object result, string playerId, GameAction.Reinforce action)
     {
         var expectedError = new GameError.CannotReinforceNonAdjacentTile(playerId, action.To);
-        switch (result)
-        {
-            case Result<GameEvent, GameError>.Err e:
-                Assert.Equal(expectedError, e.Error);
-                break;
-            default:
-                Assert.Fail($"expected Result.Err, but was Result.Success: ${result}");
-                break;
-        }
+        ExpectError(result, expectedError);
     }
 
     internal static void ResultIsCannotReinforceToOpponentTile(object result, string playerId, GameAction.Reinforce action)
     {
         var expectedError = new GameError.CannotReinforceToOpponentTile(playerId, action.To);
-        switch (result)
-        {
-            case Result<GameEvent, GameError>.Err e:
-                Assert.Equal(expectedError, e.Error);
-                break;
-            default:
-                Assert.Fail($"expected Result.Err, but was Result.Success: ${result}");
-                break;
-        }
+        ExpectError(result, expectedError);
     }
 
     internal static void ResultIsOutOfTurnError(object result, string playerId)
     {
         var expectedError = new GameError.OutOfTurnError(playerId);
-        switch (result)
-        {
-            case Result<GameEvent, GameError>.Err e:
-                Assert.Equal(expectedError, e.Error);
-                break;
-            default:
-                Assert.Fail($"expected Result.Err, but was Result.Success: ${result}");
-                break;
-        }
+        ExpectError(result, expectedError);
     }
 
     internal static void ResultIsPlayerEndedAttackPhase(Result<GameEvent, GameError> result, string playerId)
     {
         var expectedEvent = new GameEvent.PlayerEndedAttackPhase(playerId);
-        switch (result)
-        {
-            case Result<GameEvent, GameError>.Success s:
-                Assert.Equal(expectedEvent, s.Value);
-                break;
-            default:
-                Assert.Fail($"expected Result.Success, but was Result.Err: ${result}");
-                break;
-        }
+        ExpectEvent(result, expectedEvent);
     }
 
     internal static void ResultIsPlayerEndedReinforcingPhase(object result, string playerId)
     {
         var expectedEvent = new GameEvent.PlayerEndedReinforcePhase(playerId);
-        switch (result)
-        {
-            case Result<GameEvent, GameError>.Success s:
-                Assert.Equal(expectedEvent, s.Value);
-                break;
-            default:
-                Assert.Fail($"expected Result.Success, but was Result.Err: ${result}");
-                break;
-        }
+        ExpectEvent(result, expectedEvent);
     }
 
     internal static void ResultIsPlayerReinforced(object result, string playerId, GameAction.Reinforce action)
     {
         var expectedEvent = new GameEvent.PlayerReinforced(playerId, action.From, action.To, action.Quantity);
-        switch (result)
-        {
-            case Result<GameEvent, GameError>.Success s:
-                Assert.Equal(expectedEvent, s.Value);
-                break;
-            default:
-                Assert.Fail($"expected Result.Success, but was Result.Err: ${result}");
-                break;
-        }
+        ExpectEvent(result, expectedEvent);
     }
 
     internal static void ResultIsPlayerResigned(object result, string playerId)
     {
         var expectedEvent = new GameEvent.PlayerResigned(playerId);
-        switch (result)
-        {
-            case Result<GameEvent, GameError>.Success s:
-                Assert.Equal(expectedEvent, s.Value);
-                break;
-            default:
-                Assert.Fail($"expected Result.Success, but was Result.Err: ${result}");
-                break;
-        }
+        ExpectEvent(result, expectedEvent);
     }
 
     internal static void ResultIsReinforceInvalidFrom(object result, string playerId, GameAction.Reinforce action)
     {
         var expectedError = new GameError.ReinforceInvalidFrom(playerId, action.From);
+        ExpectError(result, expectedError);
+    }
+
+    internal static void ExpectError(object result, GameError expectedError)
+    {
         switch (result)
         {
             case Result<GameEvent, GameError>.Err e:
@@ -439,6 +457,19 @@ internal static class Then
                 break;
             default:
                 Assert.Fail($"expected Result.Err, but was Result.Success: ${result}");
+                break;
+        }
+    }
+
+    internal static void ExpectEvent(object result, GameEvent expectedEvent)
+    {
+        switch (result)
+        {
+            case Result<GameEvent, GameError>.Success s:
+                Assert.Equal(expectedEvent, s.Value);
+                break;
+            default:
+                Assert.Fail($"expected Result.Success, but was Result.Err: ${result}");
                 break;
         }
     }
@@ -468,5 +499,29 @@ internal static class Then
         var tile = gameState.Hexgrid.GetTileAt(from.Q, from.R);
 
         Assert.Equal(v, tile?.NumUnits);
+    }
+
+    internal static void ResultIsCannotAttackUnownedTile(object result, string playerId, Coords coords)
+    {
+        var expectedResult = new GameError.CannotAttackUnownedTile(playerId, coords);
+        ExpectError(result, expectedResult);
+    }
+
+    internal static void ResultIsCannotAttackNonAdjacentTile(object result, string playerId, Coords coords)
+    {
+        var expectedResult = new GameError.CannotAttackNonAdjacentTile(playerId, coords);
+        ExpectError(result, expectedResult);
+    }
+
+    internal static void ResultIsMustAttackFromTileYouOwn(object result, string playerId, Coords coords)
+    {
+        var expectedResult = new GameError.MustAttackFromTileYouOwn(playerId, coords);
+        ExpectError(result, expectedResult);
+    }
+
+    internal static void ResultIsPlayerAttacked(object result, GameAction.Attack attackAction)
+    {
+        var expectedResult = new GameEvent.PlayerAttacked(attackAction.PlayerId, attackAction.From, attackAction.To, 0, 0);
+        ExpectEvent(result, expectedResult);
     }
 }

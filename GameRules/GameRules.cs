@@ -58,7 +58,49 @@ public static class GameRules
 
     private static Result<GameEvent, GameError> HandleAttack(GameState state, GameAction.Attack a, GameContext context)
     {
-        throw new NotImplementedException();
+        if (state.PlayerIdForCurrentTurn != a.PlayerId)
+        {
+            return OutOfTurnResult(a.PlayerId);
+        }
+
+        var fromTile = state.Hexgrid.GetTileAt(a.From);
+        var toTile = state.Hexgrid.GetTileAt(a.To);
+
+        if (fromTile is null)
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.TileOutOfBounds(a.From));
+        }
+        if (toTile is null)
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.TileOutOfBounds(a.To));
+        }
+        if (state.IsPlayer1Turn() && fromTile.Owner != TileOwner.Player1)
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.MustAttackFromTileYouOwn(a.PlayerId, a.From));
+        }
+        if (state.IsPlayer2Turn() && fromTile.Owner != TileOwner.Player2)
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.MustAttackFromTileYouOwn(a.PlayerId, a.From));
+        }
+        if (toTile.Owner == TileOwner.Player1 && state.IsPlayer1Turn())
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotAttackOwnTile(a.PlayerId, a.To));
+        }
+        if (toTile.Owner == TileOwner.Player2 && state.IsPlayer2Turn())
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotAttackOwnTile(a.PlayerId, a.To));
+        }
+        if (toTile.Owner == TileOwner.Unowned)
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotAttackUnownedTile(a.PlayerId, a.To));
+        }
+
+        if (!state.Hexgrid.AreNeighbors(a.From, a.To))
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotAttackNonAdjacentTile(a.PlayerId, a.To));
+        }
+
+        return new Result<GameEvent, GameError>.Success(new GameEvent.PlayerAttacked(a.PlayerId, a.From, a.To, 0, 0));
     }
 
     private static Result<GameEvent, GameError> HandleEndAttackPhase(GameState state, GameAction.EndAttackPhase a, GameContext context)
@@ -159,7 +201,16 @@ public static class GameRules
 
     private static GameState ApplyPlayerAttacked(GameState state, GameEvent.PlayerAttacked e)
     {
-        throw new NotImplementedException();
+        var fromTile = state.Hexgrid.GetTileAt(e.From);
+        var toTile = state.Hexgrid.GetTileAt(e.To);
+
+        var newFromUnits = fromTile.NumUnits - e.FromLost;
+        var newToUnits = toTile.NumUnits - e.ToLost;
+
+        state.Hexgrid.SetTileAt(e.From.Q, e.From.R, fromTile with { NumUnits = newFromUnits });
+        state.Hexgrid.SetTileAt(e.To.Q, e.To.R, toTile with { NumUnits = newToUnits });
+
+        return state;
     }
 
     private static GameState ApplyPlayerEndedAttackPhase(GameState state, GameEvent.PlayerEndedAttackPhase e)
@@ -276,6 +327,10 @@ public abstract record GameError
     public sealed record OutOfTurnError(string PlayerId) : GameError;
     public sealed record InvalidAttackFrom(string PlayerId, Coords From) : GameError;
     public sealed record InvalidAttackTo(string PlayerId, Coords To) : GameError;
+    public sealed record MustAttackFromTileYouOwn(string PlayerId, Coords From) : GameError;
+    public sealed record CannotAttackOwnTile(string PlayerId, Coords To) : GameError;
+    public sealed record CannotAttackUnownedTile(string PlayerId, Coords To) : GameError;
+    public sealed record CannotAttackNonAdjacentTile(string PlayerId, Coords To) : GameError;
     public sealed record ReinforceFromInsufficientQuantity(string PlayerId) : GameError;
     public sealed record ReinforceInvalidFrom(string PlayerId, Coords Coords) : GameError;
     public sealed record ReinforceInvalidTo(string PlayerId) : GameError;
