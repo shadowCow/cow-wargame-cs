@@ -109,10 +109,10 @@ public static class GameRules
         {
             return new Result<GameEvent, GameError>.Err(new GameError.CannotReinforceToOpponentTile(a.PlayerId, a.To));
         }
-        // if (!state.Hexgrid.AreNeighbors(a.From, a.To))
-        // {
-        //     return new Result<GameEvent, GameError>.Err(new GameError.CannotReinforceNonAdjacentTile(a.PlayerId, a.To));
-        // }
+        if (!state.Hexgrid.AreNeighbors(a.From, a.To))
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotReinforceNonAdjacentTile(a.PlayerId, a.To));
+        }
 
         return new Result<GameEvent, GameError>.Success(new GameEvent.PlayerReinforced(a.PlayerId, a.From, a.To, a.Quantity));
     }

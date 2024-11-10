@@ -107,17 +107,17 @@ public class GameRulesTests
     [Fact]
     public void PlayerCannotReinforceNonAdjacentTile()
     {
-        // var gameFst = Given.ANewGameInReinforcePhase();
+        var gameFst = Given.AGameDominatedByPlayer1InReinforcePhase();
 
-        // var action = new GameAction.Reinforce(Given.Player1Id, new Coords(0, 0), new Coords(2, 0), 1);
-        // var result = When.PlayerReinforcesUnoccupiedTile(gameFst, action);
+        var action = new GameAction.Reinforce(Given.Player1Id, new Coords(0, 0), new Coords(2, 0), 1);
+        var result = When.PlayerReinforces(gameFst, action);
 
-        // Then.ResultIsCannotReinforceNonAdjacentTile(result, Given.Player1Id, action);
-        // Then.GameIsOngoing(gameFst.GetState());
-        // Then.TurnIsPlayer1(gameFst.GetState());
-        // Then.TurnPhaseIsReinforcing(gameFst.GetState());
-        // Then.UnitCountOnTileIs(gameFst.GetState(), action.From, 1);
-        // Then.UnitCountOnTileIs(gameFst.GetState(), action.To, 0);
+        Then.ResultIsCannotReinforceNonAdjacentTile(result, Given.Player1Id, action);
+        Then.GameIsOngoing(gameFst.GetState());
+        Then.TurnIsPlayer1(gameFst.GetState());
+        Then.TurnPhaseIsReinforcing(gameFst.GetState());
+        Then.UnitCountOnTileIs(gameFst.GetState(), action.From, 2);
+        Then.UnitCountOnTileIs(gameFst.GetState(), action.To, 2);
     }
     
     [Fact]
@@ -241,6 +241,19 @@ internal static class Given
             Player1Id,
             TurnPhase.Reinforcing,
             GameMaps.TinyGrassland(),
+            new GameStatus.Ongoing());
+
+        return GameRules.CreateFst(state);
+    }
+
+    internal static GameFst AGameDominatedByPlayer1InReinforcePhase()
+    {
+        var state = new GameState(
+            Player1Id,
+            Player2Id,
+            Player1Id,
+            TurnPhase.Reinforcing,
+            GameMaps.TinyGrasslandMostlyPlayer1(),
             new GameStatus.Ongoing());
 
         return GameRules.CreateFst(state);
