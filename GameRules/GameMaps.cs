@@ -63,18 +63,18 @@ public static class GameMaps
         return grid;
     }
 
-    public static Hexgrid<Tile> TinyGrasslandFullyPopulated()
+    public static Hexgrid<Tile> TinyGrasslandFullyPopulated(int unitsPerTile = 2)
     {
         var grid = new Hexgrid<Tile>(3, 2);
 
-        grid.SetTileAt(0, 0, new Tile(TileOwner.Player1, TileTerrain.Grassland, 2));
-        grid.SetTileAt(0, 1, new Tile(TileOwner.Player1, TileTerrain.Grassland, 2));
+        grid.SetTileAt(0, 0, new Tile(TileOwner.Player1, TileTerrain.Grassland, unitsPerTile));
+        grid.SetTileAt(0, 1, new Tile(TileOwner.Player1, TileTerrain.Grassland, unitsPerTile));
 
-        grid.SetTileAt(1, 0, new Tile(TileOwner.Player1, TileTerrain.Grassland, 2));
-        grid.SetTileAt(1, 1, new Tile(TileOwner.Player2, TileTerrain.Grassland, 2));
+        grid.SetTileAt(1, 0, new Tile(TileOwner.Player1, TileTerrain.Grassland, unitsPerTile));
+        grid.SetTileAt(1, 1, new Tile(TileOwner.Player2, TileTerrain.Grassland, unitsPerTile));
 
-        grid.SetTileAt(2, 0, new Tile(TileOwner.Player2, TileTerrain.Grassland, 2));
-        grid.SetTileAt(2, 1, new Tile(TileOwner.Player2, TileTerrain.Grassland, 2));
+        grid.SetTileAt(2, 0, new Tile(TileOwner.Player2, TileTerrain.Grassland, unitsPerTile));
+        grid.SetTileAt(2, 1, new Tile(TileOwner.Player2, TileTerrain.Grassland, unitsPerTile));
 
         return grid;
     }

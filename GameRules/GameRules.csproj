@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CowDice" Version="0.3.0" />
     <PackageReference Include="CowFst" Version="0.1.0" />
     <PackageReference Include="CowHexgrid" Version="0.2.0" />
   </ItemGroup>

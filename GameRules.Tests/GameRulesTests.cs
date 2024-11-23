@@ -1,3 +1,4 @@
+using CowDice;
 using CowFst;
 using CowHexgrid;
 
@@ -20,16 +21,79 @@ public class GameRulesTests
     }
 
     [Fact]
-    public void TestPlayerCanAttackAdjacentEnemyTile()
+    public void PlayerAttacksAdjacentEnemyTileAndLoses()
     {
-        var gameFst = Given.AFullBoardInAttackPhase();
+        var gameFst = Given.AFullBoardInAttackPhase(Given.AMinDiceRoller(), Given.AMaxDiceRoller());
 
         var attackAction = new GameAction.Attack(Given.Player1Id, new Coords(1, 0), new Coords(2, 0));
         var result = When.PlayerAttacks(gameFst, attackAction);
 
-        Then.ResultIsPlayerAttacked(result, attackAction);
-        Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.From, 2);
+        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, 1, 0);
+        Then.ResultIsPlayerAttacked(result, expectedEvent);
+        Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.From, 1);
         Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.To, 2);
+        Then.TileOwnerIs(gameFst.GetState(), attackAction.From, TileOwner.Player1);
+        Then.TileOwnerIs(gameFst.GetState(), attackAction.To, TileOwner.Player2);
+        Then.GameIsOngoing(gameFst.GetState());
+        Then.TurnPhaseIsAttacking(gameFst.GetState());
+        Then.TurnIsPlayer1(gameFst.GetState());
+    }
+
+    [Fact]
+    public void PlayerAttacksAdjacentEnemyTileAndWins()
+    {
+        var gameFst = Given.AFullBoardInAttackPhase(Given.AMaxDiceRoller(), Given.AMinDiceRoller());
+
+        var attackAction = new GameAction.Attack(Given.Player1Id, new Coords(1, 0), new Coords(2, 0));
+        var result = When.PlayerAttacks(gameFst, attackAction);
+
+        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, 0, 1);
+        Then.ResultIsPlayerAttacked(result, expectedEvent);
+        Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.From, 2);
+        Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.To, 1);
+        Then.TileOwnerIs(gameFst.GetState(), attackAction.From, TileOwner.Player1);
+        Then.TileOwnerIs(gameFst.GetState(), attackAction.To, TileOwner.Player2);
+        Then.GameIsOngoing(gameFst.GetState());
+        Then.TurnPhaseIsAttacking(gameFst.GetState());
+        Then.TurnIsPlayer1(gameFst.GetState());
+    }
+
+    [Fact]
+    public void PlayerAttacksAndRemovesEnemyFromTile()
+    {
+        var gameFst = Given.AFullBoardInAttackPhase(Given.AMaxDiceRoller(), Given.AMinDiceRoller(), 1);
+
+        var attackAction = new GameAction.Attack(Given.Player1Id, new Coords(1, 0), new Coords(2, 0));
+        var result = When.PlayerAttacks(gameFst, attackAction);
+
+        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, 0, 1);
+        Then.ResultIsPlayerAttacked(result, expectedEvent);
+        Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.From, 1);
+        Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.To, 0);
+        Then.GameIsOngoing(gameFst.GetState());
+        Then.TurnPhaseIsAttacking(gameFst.GetState());
+        Then.TurnIsPlayer1(gameFst.GetState());
+        Then.TileOwnerIs(gameFst.GetState(), attackAction.From, TileOwner.Player1);
+        Then.TileOwnerIs(gameFst.GetState(), attackAction.To, TileOwner.Unowned);
+    }
+
+    [Fact]
+    public void PlayerAttacksAndLosesTile()
+    {
+        var gameFst = Given.AFullBoardInAttackPhase(Given.AMinDiceRoller(), Given.AMaxDiceRoller(), 1);
+
+        var attackAction = new GameAction.Attack(Given.Player1Id, new Coords(1, 0), new Coords(2, 0));
+        var result = When.PlayerAttacks(gameFst, attackAction);
+
+        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, 1, 0);
+        Then.ResultIsPlayerAttacked(result, expectedEvent);
+        Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.From, 0);
+        Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.To, 1);
+        Then.GameIsOngoing(gameFst.GetState());
+        Then.TurnPhaseIsAttacking(gameFst.GetState());
+        Then.TurnIsPlayer1(gameFst.GetState());
+        Then.TileOwnerIs(gameFst.GetState(), attackAction.From, TileOwner.Unowned);
+        Then.TileOwnerIs(gameFst.GetState(), attackAction.To, TileOwner.Player2);
     }
 
     [Fact]
@@ -75,7 +139,7 @@ public class GameRulesTests
     [Fact]
     public void PlayerCannotAttackFromOpponentTile()
     {
-        var gameFst = Given.AFullBoardInAttackPhase();
+        var gameFst = Given.AFullBoardInAttackPhase(Given.AMaxDiceRoller(), Given.AMinDiceRoller());
 
         var result = When.PlayerAttacks(gameFst, new GameAction.Attack(Given.Player1Id, new Coords(2, 0), new Coords(2, 1)));
 
@@ -275,7 +339,11 @@ internal static class Given
 
     internal static GameFst ANewGame()
     {
-        return GameRules.CreateFst(Player1Id, Player2Id, GameMaps.TinyGrassland());
+        return GameRules.CreateFst(
+            Player1Id,
+            Player2Id,
+            GameMaps.TinyGrassland(),
+            new GameContext(AMaxDiceRoller(), AMinDiceRoller()));
     }
 
     internal static GameFst ANewGameInReinforcePhase()
@@ -288,7 +356,7 @@ internal static class Given
             GameMaps.TinyGrassland(),
             new GameStatus.Ongoing());
 
-        return GameRules.CreateFst(state);
+        return GameRules.CreateFst(state, new GameContext(AMaxDiceRoller(), AMinDiceRoller()));
     }
 
     internal static GameFst AGameDominatedByPlayer1InReinforcePhase()
@@ -301,7 +369,7 @@ internal static class Given
             GameMaps.TinyGrasslandMostlyPlayer1(),
             new GameStatus.Ongoing());
 
-        return GameRules.CreateFst(state);
+        return GameRules.CreateFst(state, new GameContext(AMaxDiceRoller(), AMinDiceRoller()));
     }
 
     internal static GameFst AFullBoardInReinforcePhase()
@@ -314,20 +382,33 @@ internal static class Given
             GameMaps.TinyGrasslandFullyPopulated(),
             new GameStatus.Ongoing());
 
-        return GameRules.CreateFst(state);
+        return GameRules.CreateFst(state, new GameContext(AMaxDiceRoller(), AMinDiceRoller()));
     }
 
-    internal static GameFst AFullBoardInAttackPhase()
+    internal static GameFst AFullBoardInAttackPhase(
+        IDiceRoller attackerDiceRoller,
+        IDiceRoller defenderDiceRoller,
+        int unitsPerTile = 2)
     {
         var state = new GameState(
             Player1Id,
             Player2Id,
             Player1Id,
             TurnPhase.Attacking,
-            GameMaps.TinyGrasslandFullyPopulated(),
+            GameMaps.TinyGrasslandFullyPopulated(unitsPerTile),
             new GameStatus.Ongoing());
 
-        return GameRules.CreateFst(state);
+        return GameRules.CreateFst(state, new GameContext(attackerDiceRoller, defenderDiceRoller));
+    }
+
+    internal static IDiceRoller AMaxDiceRoller()
+    {
+        return new MaxDiceRoller();
+    }
+
+    internal static IDiceRoller AMinDiceRoller()
+    {
+        return new MinDiceRoller();
     }
 }
 
@@ -519,9 +600,14 @@ internal static class Then
         ExpectError(result, expectedResult);
     }
 
-    internal static void ResultIsPlayerAttacked(object result, GameAction.Attack attackAction)
+    internal static void ResultIsPlayerAttacked(object result, GameEvent.PlayerAttacked expectedResult)
     {
-        var expectedResult = new GameEvent.PlayerAttacked(attackAction.PlayerId, attackAction.From, attackAction.To, 0, 0);
         ExpectEvent(result, expectedResult);
+    }
+
+    internal static void TileOwnerIs(GameState gameState, Coords from, TileOwner expectedOwner)
+    {
+        var tileOwner = gameState.Hexgrid.GetTileAt(from)?.Owner;
+        Assert.Equal(expectedOwner, tileOwner);
     }
 }

@@ -1,14 +1,16 @@
-﻿using CowFst;
+﻿using CowDice;
+using CowFst;
 using CowHexgrid;
 
 namespace GameRules;
 
 public static class GameRules
-{
+{   
     public static Fst<GameState, GameAction, GameEvent, GameError, GameContext> CreateFst(
         string player1Id,
         string player2Id,
-        Hexgrid<Tile> hexgrid)
+        Hexgrid<Tile> hexgrid,
+        GameContext context)
     {
         var initialState = new GameState(
             player1Id,
@@ -17,7 +19,6 @@ public static class GameRules
             TurnPhase.Attacking,
             hexgrid,
             new GameStatus.Ongoing());
-        var context = new GameContext();
 
         return new Fst<GameState, GameAction, GameEvent, GameError, GameContext>(
             HandleCommand,
@@ -28,10 +29,9 @@ public static class GameRules
     }
 
     public static Fst<GameState, GameAction, GameEvent, GameError, GameContext> CreateFst(
-        GameState initialState)
+        GameState initialState,
+        GameContext context)
     {
-        var context = new GameContext();
-
         return new Fst<GameState, GameAction, GameEvent, GameError, GameContext>(
             HandleCommand,
             Transition,
@@ -100,7 +100,14 @@ public static class GameRules
             return new Result<GameEvent, GameError>.Err(new GameError.CannotAttackNonAdjacentTile(a.PlayerId, a.To));
         }
 
-        return new Result<GameEvent, GameError>.Success(new GameEvent.PlayerAttacked(a.PlayerId, a.From, a.To, 0, 0));
+        var attackerRoll = context.AttackerDiceRoller.RollMdN(1, 6).Sum();
+        var defenderRoll = context.DefenderDiceRoller.RollMdN(1, 6).Sum();
+
+        var (attackerLost, defenderLost) = attackerRoll > defenderRoll
+            ? (0, 1)
+            : (1, 0);
+
+        return new Result<GameEvent, GameError>.Success(new GameEvent.PlayerAttacked(a.PlayerId, a.From, a.To, attackerLost, defenderLost));
     }
 
     private static Result<GameEvent, GameError> HandleEndAttackPhase(GameState state, GameAction.EndAttackPhase a, GameContext context)
@@ -207,8 +214,15 @@ public static class GameRules
         var newFromUnits = fromTile.NumUnits - e.FromLost;
         var newToUnits = toTile.NumUnits - e.ToLost;
 
-        state.Hexgrid.SetTileAt(e.From.Q, e.From.R, fromTile with { NumUnits = newFromUnits });
-        state.Hexgrid.SetTileAt(e.To.Q, e.To.R, toTile with { NumUnits = newToUnits });
+        var newFromOwner = newFromUnits == 0
+            ? TileOwner.Unowned
+            : fromTile.Owner;
+        var newToOwner = newToUnits == 0
+            ? TileOwner.Unowned
+            : toTile.Owner;
+
+        state.Hexgrid.SetTileAt(e.From.Q, e.From.R, fromTile with { NumUnits = newFromUnits, Owner = newFromOwner });
+        state.Hexgrid.SetTileAt(e.To.Q, e.To.R, toTile with { NumUnits = newToUnits, Owner = newToOwner });
 
         return state;
     }
@@ -340,4 +354,4 @@ public abstract record GameError
     public sealed record ActionOutOfPhase(string PlayerId, TurnPhase CurrentPhase) : GameError;
 }
 
-public record GameContext();
+public record GameContext(IDiceRoller AttackerDiceRoller, IDiceRoller DefenderDiceRoller);
