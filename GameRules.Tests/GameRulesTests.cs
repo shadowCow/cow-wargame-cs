@@ -28,7 +28,7 @@ public class GameRulesTests
         var attackAction = new GameAction.Attack(Given.Player1Id, new Coords(1, 0), new Coords(2, 0));
         var result = When.PlayerAttacks(gameFst, attackAction);
 
-        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, 1, 0);
+        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, 1, 6, 1, 0);
         Then.ResultIsPlayerAttacked(result, expectedEvent);
         Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.From, 1);
         Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.To, 2);
@@ -47,7 +47,7 @@ public class GameRulesTests
         var attackAction = new GameAction.Attack(Given.Player1Id, new Coords(1, 0), new Coords(2, 0));
         var result = When.PlayerAttacks(gameFst, attackAction);
 
-        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, 0, 1);
+        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, 6, 1, 0, 1);
         Then.ResultIsPlayerAttacked(result, expectedEvent);
         Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.From, 2);
         Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.To, 1);
@@ -66,7 +66,7 @@ public class GameRulesTests
         var attackAction = new GameAction.Attack(Given.Player1Id, new Coords(1, 0), new Coords(2, 0));
         var result = When.PlayerAttacks(gameFst, attackAction);
 
-        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, 0, 1);
+        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, 6, 1, 0, 1);
         Then.ResultIsPlayerAttacked(result, expectedEvent);
         Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.From, 1);
         Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.To, 0);
@@ -85,7 +85,7 @@ public class GameRulesTests
         var attackAction = new GameAction.Attack(Given.Player1Id, new Coords(1, 0), new Coords(2, 0));
         var result = When.PlayerAttacks(gameFst, attackAction);
 
-        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, 1, 0);
+        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, 1, 6, 1, 0);
         Then.ResultIsPlayerAttacked(result, expectedEvent);
         Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.From, 0);
         Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.To, 1);
@@ -94,6 +94,60 @@ public class GameRulesTests
         Then.TurnIsPlayer1(gameFst.GetState());
         Then.TileOwnerIs(gameFst.GetState(), attackAction.From, TileOwner.Unowned);
         Then.TileOwnerIs(gameFst.GetState(), attackAction.To, TileOwner.Player2);
+    }
+
+    [Theory]
+    // same terrain does not add bonuses
+    [InlineData(TileTerrain.Grassland, TileTerrain.Grassland, 1, 1, 6, 1)]
+    [InlineData(TileTerrain.Forest, TileTerrain.Forest, 1, 1, 6, 1)]
+    [InlineData(TileTerrain.Mountain, TileTerrain.Mountain, 1, 1, 6, 1)]
+    // more units helps roll on same terrain
+    [InlineData(TileTerrain.Grassland, TileTerrain.Grassland, 2, 1, 7, 1)]
+    [InlineData(TileTerrain.Forest, TileTerrain.Forest, 2, 1, 7, 1)]
+    [InlineData(TileTerrain.Mountain, TileTerrain.Mountain, 2, 1, 7, 1)]
+    [InlineData(TileTerrain.Grassland, TileTerrain.Grassland, 1, 2, 6, 2)]
+    [InlineData(TileTerrain.Forest, TileTerrain.Forest, 1, 2, 6, 2)]
+    [InlineData(TileTerrain.Mountain, TileTerrain.Mountain, 1, 2, 6, 2)]
+    // different terrain adds bonuses
+    [InlineData(TileTerrain.Forest, TileTerrain.Grassland, 1, 1, 7, 1)]
+    [InlineData(TileTerrain.Mountain, TileTerrain.Forest, 1, 1, 7, 1)]
+    [InlineData(TileTerrain.Mountain, TileTerrain.Grassland, 1, 1, 8, 1)]
+    [InlineData(TileTerrain.Grassland, TileTerrain.Forest, 1, 1, 6, 2)]
+    [InlineData(TileTerrain.Forest, TileTerrain.Mountain, 1, 1, 6, 2)]
+    [InlineData(TileTerrain.Grassland, TileTerrain.Mountain, 1, 1, 6, 3)]
+    // more units helps roll on different terrain
+    [InlineData(TileTerrain.Forest, TileTerrain.Grassland, 2, 1, 8, 1)]
+    [InlineData(TileTerrain.Mountain, TileTerrain.Forest, 2, 1, 8, 1)]
+    [InlineData(TileTerrain.Mountain, TileTerrain.Grassland, 2, 1, 9, 1)]
+    [InlineData(TileTerrain.Grassland, TileTerrain.Forest, 1, 2, 6, 3)]
+    [InlineData(TileTerrain.Forest, TileTerrain.Mountain, 1, 2, 6, 3)]
+    [InlineData(TileTerrain.Grassland, TileTerrain.Mountain, 1, 2, 6, 4)]
+    public void AttackAndDefenseBonusesAttackerWins(
+        TileTerrain attackerTerrain,
+        TileTerrain defenderTerrain,
+        int attackerUnits,
+        int defenderUnits,
+        int expectedAttackerRoll,
+        int expectedDefenderRoll)
+    {
+        var gameFst = Given.TheTiniestBoardInAttackPhase(attackerTerrain, defenderTerrain, attackerUnits, defenderUnits, Given.AMaxDiceRoller(), Given.AMinDiceRoller());
+
+        var attackAction = new GameAction.Attack(Given.Player1Id, new Coords(0, 0), new Coords(1, 0));
+        var result = When.PlayerAttacks(gameFst, attackAction);
+
+        var expectedEvent = new GameEvent.PlayerAttacked(Given.Player1Id, attackAction.From, attackAction.To, expectedAttackerRoll, expectedDefenderRoll, 0, 1);
+        var expectedDefenderUnits = defenderUnits - 1;
+        var expectedDefendedTileOwner = expectedDefenderUnits > 0
+            ? TileOwner.Player2
+            : TileOwner.Unowned;
+        Then.ResultIsPlayerAttacked(result, expectedEvent);
+        Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.From, attackerUnits);
+        Then.UnitCountOnTileIs(gameFst.GetState(), attackAction.To, defenderUnits - 1);
+        Then.GameIsOngoing(gameFst.GetState());
+        Then.TurnPhaseIsAttacking(gameFst.GetState());
+        Then.TurnIsPlayer1(gameFst.GetState());
+        Then.TileOwnerIs(gameFst.GetState(), attackAction.From, TileOwner.Player1);
+        Then.TileOwnerIs(gameFst.GetState(), attackAction.To, expectedDefendedTileOwner);
     }
 
     [Fact]
@@ -272,6 +326,22 @@ public class GameRulesTests
     }
 
     [Fact]
+    public void PlayerCannotReinforceWaterTile()
+    {
+        var gameFst = Given.ANewGameInReinforcePhaseWithWater();
+
+        var action = new GameAction.Reinforce(Given.Player1Id, new Coords(0, 0), new Coords(0, 1), 1);
+        var result = When.PlayerReinforces(gameFst, action);
+
+        Then.ResultIsCannotReinforceTileType(result, Given.Player1Id, action.To, TileTerrain.Water);
+        Then.GameIsOngoing(gameFst.GetState());
+        Then.TurnIsPlayer1(gameFst.GetState());
+        Then.TurnPhaseIsReinforcing(gameFst.GetState());
+        Then.UnitCountOnTileIs(gameFst.GetState(), action.From, 1);
+        Then.UnitCountOnTileIs(gameFst.GetState(), action.To, 0);
+    }
+
+    [Fact]
     public void TestEndReinforcingPhase()
     {
         var gameFst = Given.ANewGame();
@@ -307,25 +377,25 @@ public class GameRulesTests
         Then.GameStateIsUnchanged(originalState, gameFst.GetState());
     }
 
-    [Fact]
+    [Fact(Skip = "Not implemented yet")]
     public void PlayerWinsWhenOpponentIsEliminated()
     {
 
     }
 
-    [Fact]
+    [Fact(Skip = "Not implemented yet")]
     public void TestPlayerOneTurn()
     {
         
     }
 
-    [Fact]
+    [Fact(Skip = "Not implemented yet")]
     public void TestPlayerTwoTurn()
     {
 
     }
 
-    [Fact]
+    [Fact(Skip = "Not implemented yet")]
     public void TestWholeGame()
     {
 
@@ -354,6 +424,19 @@ internal static class Given
             Player1Id,
             TurnPhase.Reinforcing,
             GameMaps.TinyGrassland(),
+            new GameStatus.Ongoing());
+
+        return GameRules.CreateFst(state, new GameContext(AMaxDiceRoller(), AMinDiceRoller()));
+    }
+
+    internal static GameFst ANewGameInReinforcePhaseWithWater()
+    {
+        var state = new GameState(
+            Player1Id,
+            Player2Id,
+            Player1Id,
+            TurnPhase.Reinforcing,
+            GameMaps.TinyGrasslandWithLakes(),
             new GameStatus.Ongoing());
 
         return GameRules.CreateFst(state, new GameContext(AMaxDiceRoller(), AMinDiceRoller()));
@@ -396,6 +479,19 @@ internal static class Given
             Player1Id,
             TurnPhase.Attacking,
             GameMaps.TinyGrasslandFullyPopulated(unitsPerTile),
+            new GameStatus.Ongoing());
+
+        return GameRules.CreateFst(state, new GameContext(attackerDiceRoller, defenderDiceRoller));
+    }
+
+    internal static GameFst TheTiniestBoardInAttackPhase(TileTerrain attackerTerrain, TileTerrain defenderTerrain, int attackerUnits, int defenderUnits, IDiceRoller attackerDiceRoller, IDiceRoller defenderDiceRoller)
+    {
+        var state = new GameState(
+            Player1Id,
+            Player2Id,
+            Player1Id,
+            TurnPhase.Attacking,
+            GameMaps.TiniestMap(attackerTerrain, attackerUnits, defenderTerrain, defenderUnits),
             new GameStatus.Ongoing());
 
         return GameRules.CreateFst(state, new GameContext(attackerDiceRoller, defenderDiceRoller));
@@ -582,6 +678,12 @@ internal static class Then
         Assert.Equal(v, tile?.NumUnits);
     }
 
+    internal static void TileOwnerIs(GameState gameState, Coords from, TileOwner expectedOwner)
+    {
+        var tileOwner = gameState.Hexgrid.GetTileAt(from)?.Owner;
+        Assert.Equal(expectedOwner, tileOwner);
+    }
+
     internal static void ResultIsCannotAttackUnownedTile(object result, string playerId, Coords coords)
     {
         var expectedResult = new GameError.CannotAttackUnownedTile(playerId, coords);
@@ -605,9 +707,9 @@ internal static class Then
         ExpectEvent(result, expectedResult);
     }
 
-    internal static void TileOwnerIs(GameState gameState, Coords from, TileOwner expectedOwner)
+    internal static void ResultIsCannotReinforceTileType(object result, string player1Id, Coords coords, TileTerrain terrain)
     {
-        var tileOwner = gameState.Hexgrid.GetTileAt(from)?.Owner;
-        Assert.Equal(expectedOwner, tileOwner);
+        var expectedError = new GameError.CannotReinforceTileType(player1Id, coords, terrain);
+        ExpectError(result, expectedError);
     }
 }

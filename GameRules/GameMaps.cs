@@ -94,4 +94,30 @@ public static class GameMaps
 
         return grid;
     }
+
+    public static Hexgrid<Tile> TinyGrasslandWithLakes()
+    {
+        var grid = new Hexgrid<Tile>(3, 2);
+
+        grid.SetTileAt(0, 0, new Tile(TileOwner.Player1, TileTerrain.Grassland, 1));
+        grid.SetTileAt(0, 1, Tile.Create(TileTerrain.Water));
+
+        grid.SetTileAt(1, 0, Tile.Create(TileTerrain.Grassland));
+        grid.SetTileAt(1, 1, Tile.Create(TileTerrain.Grassland));
+
+        grid.SetTileAt(2, 0, Tile.Create(TileTerrain.Water));
+        grid.SetTileAt(2, 1, new Tile(TileOwner.Player2, TileTerrain.Grassland, 1));
+
+        return grid;
+    }
+
+    public static Hexgrid<Tile> TiniestMap(TileTerrain player1Terrain, int player1Units, TileTerrain player2Terrain, int player2Units)
+    {
+        var grid = new Hexgrid<Tile>(2, 1);
+
+        grid.SetTileAt(0, 0, new Tile(TileOwner.Player1, player1Terrain, player1Units));
+        grid.SetTileAt(1, 0, new Tile(TileOwner.Player2, player2Terrain, player2Units));
+
+        return grid;
+    }
 }

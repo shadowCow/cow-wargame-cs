@@ -100,14 +100,16 @@ public static class GameRules
             return new Result<GameEvent, GameError>.Err(new GameError.CannotAttackNonAdjacentTile(a.PlayerId, a.To));
         }
 
-        var attackerRoll = context.AttackerDiceRoller.RollMdN(1, 6).Sum();
-        var defenderRoll = context.DefenderDiceRoller.RollMdN(1, 6).Sum();
+        var (attackerBonus, defenderBonus) = RollingBonuses.Compute(fromTile, toTile);
+
+        var attackerRoll = context.AttackerDiceRoller.RollMdN(1, 6).Sum() + attackerBonus;
+        var defenderRoll = context.DefenderDiceRoller.RollMdN(1, 6).Sum() + defenderBonus;
 
         var (attackerLost, defenderLost) = attackerRoll > defenderRoll
             ? (0, 1)
             : (1, 0);
 
-        return new Result<GameEvent, GameError>.Success(new GameEvent.PlayerAttacked(a.PlayerId, a.From, a.To, attackerLost, defenderLost));
+        return new Result<GameEvent, GameError>.Success(new GameEvent.PlayerAttacked(a.PlayerId, a.From, a.To, attackerRoll, defenderRoll, attackerLost, defenderLost));
     }
 
     private static Result<GameEvent, GameError> HandleEndAttackPhase(GameState state, GameAction.EndAttackPhase a, GameContext context)
@@ -161,6 +163,10 @@ public static class GameRules
         if (!state.Hexgrid.AreNeighbors(a.From, a.To))
         {
             return new Result<GameEvent, GameError>.Err(new GameError.CannotReinforceNonAdjacentTile(a.PlayerId, a.To));
+        }
+        if (toTile.Terrain == TileTerrain.Water)
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotReinforceTileType(a.PlayerId, a.To, toTile.Terrain));
         }
 
         return new Result<GameEvent, GameError>.Success(new GameEvent.PlayerReinforced(a.PlayerId, a.From, a.To, a.Quantity));
@@ -270,6 +276,34 @@ public static class GameRules
     }
 }
 
+public static class RollingBonuses
+{
+    public static (int attackBonuses, int defenderBonuses) Compute(Tile attackerTile, Tile defenderTile)
+    {
+        var (aBonus, dBonus) = (attackerTile.Terrain, defenderTile.Terrain) switch
+        {
+            (TileTerrain.Forest, TileTerrain.Grassland) => (1, 0),
+            (TileTerrain.Mountain, TileTerrain.Grassland) => (2, 0),
+            (TileTerrain.Mountain, TileTerrain.Forest) => (1, 0),
+            (TileTerrain.Grassland, TileTerrain.Forest) => (0, 1),
+            (TileTerrain.Grassland, TileTerrain.Mountain) => (0, 2),
+            (TileTerrain.Forest, TileTerrain.Mountain) => (0, 1),
+            _ => (0, 0),
+        };
+
+        if (attackerTile.NumUnits > defenderTile.NumUnits)
+        {
+            aBonus += 1;
+        }
+        if (defenderTile.NumUnits > attackerTile.NumUnits)
+        {
+            dBonus += 1;
+        }
+
+        return (aBonus, dBonus);
+    }
+}
+
 public record GameState(
     string Player1Id,
     string Player2Id,
@@ -327,7 +361,7 @@ public abstract record GameEvent
     private GameEvent() {}
 
     public sealed record PlayerResigned(string PlayerId) : GameEvent;
-    public sealed record PlayerAttacked(string PlayerId, Coords From, Coords To, int FromLost, int ToLost) : GameEvent;
+    public sealed record PlayerAttacked(string PlayerId, Coords From, Coords To, int AttackerRoll, int DefenderRoll, int FromLost, int ToLost) : GameEvent;
     public sealed record PlayerEndedAttackPhase(string PlayerId) : GameEvent;
     public sealed record PlayerReinforced(string PlayerId, Coords From, Coords To, int Quantity) : GameEvent;
     public sealed record PlayerEndedReinforcePhase(string PlayerId) : GameEvent;
@@ -350,6 +384,7 @@ public abstract record GameError
     public sealed record ReinforceInvalidTo(string PlayerId) : GameError;
     public sealed record CannotReinforceNonAdjacentTile(string PlayerId, Coords To) : GameError;
     public sealed record CannotReinforceToOpponentTile(string PlayerId, Coords To) : GameError;
+    public sealed record CannotReinforceTileType(string PlayerId, Coords Coords, TileTerrain Terrain) : GameError;
     public sealed record TileOutOfBounds(Coords Coords) : GameError;
     public sealed record ActionOutOfPhase(string PlayerId, TurnPhase CurrentPhase) : GameError;
 }
