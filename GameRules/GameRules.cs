@@ -58,9 +58,17 @@ public static class GameRules
 
     private static Result<GameEvent, GameError> HandleAttack(GameState state, GameAction.Attack a, GameContext context)
     {
+        if (state.IsGameOver())
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotActWhenGameIsOver(a.PlayerId));
+        }
         if (state.PlayerIdForCurrentTurn != a.PlayerId)
         {
             return OutOfTurnResult(a.PlayerId);
+        }
+        if (state.TurnPhase != TurnPhase.Attacking)
+        {
+            return OutOfPhaseResult(a.PlayerId, state.TurnPhase, TurnPhase.Attacking);
         }
 
         var fromTile = state.Hexgrid.GetTileAt(a.From);
@@ -114,9 +122,17 @@ public static class GameRules
 
     private static Result<GameEvent, GameError> HandleEndAttackPhase(GameState state, GameAction.EndAttackPhase a, GameContext context)
     {
+        if (state.IsGameOver())
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotActWhenGameIsOver(a.PlayerId));
+        }
         if (state.PlayerIdForCurrentTurn != a.PlayerId)
         {
             return OutOfTurnResult(a.PlayerId);
+        }
+        if (state.TurnPhase != TurnPhase.Attacking)
+        {
+            return OutOfPhaseResult(a.PlayerId, state.TurnPhase, TurnPhase.Attacking);
         }
 
         return new Result<GameEvent, GameError>.Success(new GameEvent.PlayerEndedAttackPhase(a.PlayerId));
@@ -124,13 +140,17 @@ public static class GameRules
 
     private static Result<GameEvent, GameError> HandleReinforce(GameState state, GameAction.Reinforce a, GameContext context)
     {
+        if (state.IsGameOver())
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotActWhenGameIsOver(a.PlayerId));
+        }
         if (state.PlayerIdForCurrentTurn != a.PlayerId)
         {
             return OutOfTurnResult(a.PlayerId);
         }
         if (state.TurnPhase != TurnPhase.Reinforcing)
         {
-            return new Result<GameEvent, GameError>.Err(new GameError.ActionOutOfPhase(a.PlayerId, state.TurnPhase));
+            return OutOfPhaseResult(a.PlayerId, state.TurnPhase, TurnPhase.Reinforcing);
         }
 
         var fromTile = state.Hexgrid.GetTileAt(a.From.Q, a.From.R);
@@ -174,9 +194,17 @@ public static class GameRules
 
     private static Result<GameEvent, GameError> HandleEndReinforcePhase(GameState state, GameAction.EndReinforcePhase a, GameContext context)
     {
+        if (state.IsGameOver())
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotActWhenGameIsOver(a.PlayerId));
+        }
         if (state.PlayerIdForCurrentTurn != a.PlayerId)
         {
             return OutOfTurnResult(a.PlayerId);
+        }
+        if (state.TurnPhase != TurnPhase.Reinforcing)
+        {
+            return OutOfPhaseResult(a.PlayerId, state.TurnPhase, TurnPhase.Reinforcing);
         }
 
         return new Result<GameEvent, GameError>.Success(new GameEvent.PlayerEndedReinforcePhase(a.PlayerId));
@@ -184,6 +212,10 @@ public static class GameRules
 
     private static Result<GameEvent, GameError> HandleResign(GameState state, GameAction.Resign a, GameContext context)
     {
+        if (state.IsGameOver())
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotActWhenGameIsOver(a.PlayerId));
+        }
         if (state.PlayerIdForCurrentTurn != a.PlayerId)
         {
             return OutOfTurnResult(a.PlayerId);
@@ -195,6 +227,11 @@ public static class GameRules
     private static Result<GameEvent, GameError> OutOfTurnResult(string playerId)
     {
         return new Result<GameEvent, GameError>.Err (new GameError.OutOfTurnError(playerId));
+    }
+    
+    private static Result<GameEvent, GameError> OutOfPhaseResult(string playerId, TurnPhase currentPhase, TurnPhase requiredPhase)
+    {
+        return new Result<GameEvent, GameError>.Err(new GameError.ActionOutOfPhase(playerId, currentPhase, requiredPhase));
     }
 
     public static GameState Transition(
@@ -230,6 +267,19 @@ public static class GameRules
         state.Hexgrid.SetTileAt(e.From.Q, e.From.R, fromTile with { NumUnits = newFromUnits, Owner = newFromOwner });
         state.Hexgrid.SetTileAt(e.To.Q, e.To.R, toTile with { NumUnits = newToUnits, Owner = newToOwner });
 
+        if (!state.DoesPlayerOwnAnyTiles(TileOwner.Player1))
+        {
+            return state with {
+                Status = new GameStatus.Completed(new GameOutcome.Winner(state.Player2Id)),
+            };
+        }
+        if (!state.DoesPlayerOwnAnyTiles(TileOwner.Player2))
+        {
+            return state with {
+                Status = new GameStatus.Completed(new GameOutcome.Winner(state.Player1Id)),
+            };
+        }
+
         return state;
     }
 
@@ -257,6 +307,23 @@ public static class GameRules
         var nextPlayerTurn = state.PlayerIdForCurrentTurn == state.Player1Id
             ? state.Player2Id
             : state.Player1Id;
+
+        var tileOwnerForNewArmies = nextPlayerTurn == state.Player1Id
+            ? TileOwner.Player1
+            : TileOwner.Player2;
+
+        foreach (var coords in state.Hexgrid.EnumerateCoordsByColumn())
+        {
+            var tile = state.Hexgrid.GetTileAt(coords.Q, coords.R);
+            if (tile == null || tile.Owner != tileOwnerForNewArmies)
+            {
+                continue;
+            }
+
+            var newNumUnits = Math.Min(tile.NumUnits + 1, TileUnitLimits.Compute(tile));
+
+            state.Hexgrid.SetTileAt(coords.Q, coords.R, tile with { NumUnits = newNumUnits });
+        }
 
         return state with {
             PlayerIdForCurrentTurn = nextPlayerTurn,
@@ -304,6 +371,20 @@ public static class RollingBonuses
     }
 }
 
+public static class TileUnitLimits
+{
+    public static int Compute(Tile tile)
+    {
+        return tile.Terrain switch
+        {
+            TileTerrain.Grassland => 10,
+            TileTerrain.Forest => 7,
+            TileTerrain.Mountain => 4,
+            _ => 0,
+        };
+    }
+}
+
 public record GameState(
     string Player1Id,
     string Player2Id,
@@ -320,6 +401,23 @@ public record GameState(
     public bool IsPlayer2Turn()
     {
         return !IsPlayer1Turn();
+    }
+
+    public bool DoesPlayerOwnAnyTiles(TileOwner owner)
+    {
+        return Hexgrid.EnumerateCoordsByColumn()
+            .Select(Hexgrid.GetTileAt)
+            .Where(t => t is not null && t.Owner == owner)
+            .Any();
+    }
+
+    public bool IsGameOver()
+    {
+        return Status switch
+        {
+            GameStatus.Completed => true,
+            _ => false,
+        };
     }
 }
 
@@ -385,8 +483,9 @@ public abstract record GameError
     public sealed record CannotReinforceNonAdjacentTile(string PlayerId, Coords To) : GameError;
     public sealed record CannotReinforceToOpponentTile(string PlayerId, Coords To) : GameError;
     public sealed record CannotReinforceTileType(string PlayerId, Coords Coords, TileTerrain Terrain) : GameError;
+    public sealed record CannotActWhenGameIsOver(string PlayerId) : GameError;
     public sealed record TileOutOfBounds(Coords Coords) : GameError;
-    public sealed record ActionOutOfPhase(string PlayerId, TurnPhase CurrentPhase) : GameError;
+    public sealed record ActionOutOfPhase(string PlayerId, TurnPhase CurrentPhase, TurnPhase PhaseNeededForAction) : GameError;
 }
 
 public record GameContext(IDiceRoller AttackerDiceRoller, IDiceRoller DefenderDiceRoller);
