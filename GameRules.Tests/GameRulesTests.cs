@@ -13,8 +13,12 @@ public class GameRulesTests
     {
         var gameFst = Given.ANewGame();
 
+        When.GameStarts(gameFst);
+
         Then.Player1Is(gameFst.GetState(), Given.Player1Id);
         Then.Player2Is(gameFst.GetState(), Given.Player2Id);
+        Then.TileIs(gameFst, new Coords(0, 0), TileOwner.Player1, 2);
+        Then.TileIs(gameFst, new Coords(2, 1), TileOwner.Player2, 1);
         Then.GameIsOngoing(gameFst.GetState());
         Then.TurnIsPlayer1(gameFst.GetState());
         Then.TurnPhaseIsAttacking(gameFst.GetState());
@@ -225,8 +229,8 @@ public class GameRulesTests
         Then.GameIsOngoing(gameFst.GetState());
         Then.TurnIsPlayer1(gameFst.GetState());
         Then.TurnPhaseIsReinforcing(gameFst.GetState());
-        Then.UnitCountOnTileIs(gameFst.GetState(), action.From, 0);
-        Then.UnitCountOnTileIs(gameFst.GetState(), action.To, 1);
+        Then.TileIs(gameFst, action.From, TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, action.To, TileOwner.Player1, 1);
     }
 
     [Fact]
@@ -241,8 +245,8 @@ public class GameRulesTests
         Then.GameIsOngoing(gameFst.GetState());
         Then.TurnIsPlayer1(gameFst.GetState());
         Then.TurnPhaseIsReinforcing(gameFst.GetState());
-        Then.UnitCountOnTileIs(gameFst.GetState(), action.From, 1);
-        Then.UnitCountOnTileIs(gameFst.GetState(), action.To, 3);
+        Then.TileIs(gameFst, action.From, TileOwner.Player1, 1);
+        Then.TileIs(gameFst, action.To, TileOwner.Player1, 3);
     }
 
     [Fact]
@@ -257,8 +261,8 @@ public class GameRulesTests
         Then.GameIsOngoing(gameFst.GetState());
         Then.TurnIsPlayer1(gameFst.GetState());
         Then.TurnPhaseIsReinforcing(gameFst.GetState());
-        Then.UnitCountOnTileIs(gameFst.GetState(), action.From, 0);
-        Then.UnitCountOnTileIs(gameFst.GetState(), action.To, 4);
+        Then.TileIs(gameFst, action.From, TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, action.To, TileOwner.Player1, 4);
     }
 
     [Fact]
@@ -341,6 +345,12 @@ public class GameRulesTests
         Then.UnitCountOnTileIs(gameFst.GetState(), action.To, 0);
     }
 
+    [Fact(Skip = "Not implemented yet")]
+    public void CannotReinforceTileAtCapacity()
+    {
+
+    }
+
     [Fact]
     public void TestEndReinforcingPhase()
     {
@@ -357,7 +367,7 @@ public class GameRulesTests
     [Fact]
     public void NewArmiesOnPlayer1TurnStart()
     {
-        var gameFst = Given.ANewGameInReinforcePhase(Given.Player2Id);
+        var gameFst = Given.AFullBoardInReinforcePhase(Given.Player2Id);
 
         var result = When.PlayerEndsReinforcingPhase(gameFst, Given.Player2Id);
 
@@ -365,12 +375,12 @@ public class GameRulesTests
         Then.TurnIsPlayer1(gameFst.GetState());
         Then.TurnPhaseIsAttacking(gameFst.GetState());
         Then.GameIsOngoing(gameFst.GetState());
-        Then.UnitCountOnTileIs(gameFst.GetState(), new Coords(0, 0), 2);
-        Then.UnitCountOnTileIs(gameFst.GetState(), new Coords(0, 1), 0);
-        Then.UnitCountOnTileIs(gameFst.GetState(), new Coords(1, 0), 0);
-        Then.UnitCountOnTileIs(gameFst.GetState(), new Coords(1, 1), 0);
-        Then.UnitCountOnTileIs(gameFst.GetState(), new Coords(2, 0), 0);
-        Then.UnitCountOnTileIs(gameFst.GetState(), new Coords(2, 1), 1);
+        Then.UnitCountOnTileIs(gameFst.GetState(), new Coords(0, 0), 3);
+        Then.UnitCountOnTileIs(gameFst.GetState(), new Coords(0, 1), 3);
+        Then.UnitCountOnTileIs(gameFst.GetState(), new Coords(1, 0), 3);
+        Then.UnitCountOnTileIs(gameFst.GetState(), new Coords(1, 1), 2);
+        Then.UnitCountOnTileIs(gameFst.GetState(), new Coords(2, 0), 2);
+        Then.UnitCountOnTileIs(gameFst.GetState(), new Coords(2, 1), 2);
     }
 
     [Fact]
@@ -495,10 +505,116 @@ public class GameRulesTests
 
     }
 
-    [Fact(Skip = "Not implemented yet")]
+    [Fact]
     public void TestWholeGame()
     {
+        var gameFst = Given.ANewGame();
 
+        When.GameStarts(gameFst);
+        When.PlayerActs(gameFst, new GameAction.EndAttackPhase(Given.Player1Id));
+        When.PlayerActs(gameFst, new GameAction.Reinforce(Given.Player1Id, new Coords(0, 0), new Coords(1, 0), 1));
+        When.PlayerActs(gameFst, new GameAction.EndReinforcePhase(Given.Player1Id));;
+        // DebugBoard(gameFst.GetState(), 2);
+
+        Then.TurnIsPlayer2(gameFst.GetState());
+        Then.TileIs(gameFst, new Coords(0, 0), TileOwner.Player1, 1);
+        Then.TileIs(gameFst, new Coords(0, 1), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(1, 0), TileOwner.Player1, 1);
+        Then.TileIs(gameFst, new Coords(1, 1), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(2, 0), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(2, 1), TileOwner.Player2, 2);
+
+        When.PlayerActs(gameFst, new GameAction.EndAttackPhase(Given.Player2Id));
+        When.PlayerActs(gameFst, new GameAction.Reinforce(Given.Player2Id, new Coords(2, 1), new Coords(1, 1), 1));
+        When.PlayerActs(gameFst, new GameAction.EndReinforcePhase(Given.Player2Id));
+        // DebugBoard(gameFst.GetState(), 3);
+
+        Then.TurnIsPlayer1(gameFst.GetState());
+        Then.TileIs(gameFst, new Coords(0, 0), TileOwner.Player1, 2);
+        Then.TileIs(gameFst, new Coords(0, 1), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(1, 0), TileOwner.Player1, 2);
+        Then.TileIs(gameFst, new Coords(1, 1), TileOwner.Player2, 1);
+        Then.TileIs(gameFst, new Coords(2, 0), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(2, 1), TileOwner.Player2, 1);
+
+        When.PlayerActs(gameFst, new GameAction.Attack(Given.Player1Id, new Coords(1, 0), new Coords(1, 1)));
+        When.PlayerActs(gameFst, new GameAction.EndAttackPhase(Given.Player1Id));
+        When.PlayerActs(gameFst, new GameAction.Reinforce(Given.Player1Id, new Coords(0, 0), new Coords(0, 1), 1));
+        When.PlayerActs(gameFst, new GameAction.Reinforce(Given.Player1Id, new Coords(1, 0), new Coords(1, 1), 1));
+        When.PlayerActs(gameFst, new GameAction.EndReinforcePhase(Given.Player1Id));
+        // DebugBoard(gameFst.GetState(), 4);
+
+        Then.TurnIsPlayer2(gameFst.GetState());
+        Then.TileIs(gameFst, new Coords(0, 0), TileOwner.Player1, 1);
+        Then.TileIs(gameFst, new Coords(0, 1), TileOwner.Player1, 1);
+        Then.TileIs(gameFst, new Coords(1, 0), TileOwner.Player1, 1);
+        Then.TileIs(gameFst, new Coords(1, 1), TileOwner.Player1, 1);
+        Then.TileIs(gameFst, new Coords(2, 0), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(2, 1), TileOwner.Player2, 2);
+
+        When.PlayerActs(gameFst, new GameAction.Attack(Given.Player2Id, new Coords(2, 1), new Coords(1, 1)));
+        When.PlayerActs(gameFst, new GameAction.EndAttackPhase(Given.Player2Id));
+        When.PlayerActs(gameFst, new GameAction.Reinforce(Given.Player2Id, new Coords(2, 1), new Coords(2, 0), 1));
+        When.PlayerActs(gameFst, new GameAction.EndReinforcePhase(Given.Player2Id));
+        // DebugBoard(gameFst.GetState(), 5);
+
+        Then.TurnIsPlayer1(gameFst.GetState());
+        Then.TileIs(gameFst, new Coords(0, 0), TileOwner.Player1, 2);
+        Then.TileIs(gameFst, new Coords(0, 1), TileOwner.Player1, 2);
+        Then.TileIs(gameFst, new Coords(1, 0), TileOwner.Player1, 2);
+        Then.TileIs(gameFst, new Coords(1, 1), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(2, 0), TileOwner.Player2, 1);
+        Then.TileIs(gameFst, new Coords(2, 1), TileOwner.Player2, 1);
+
+        When.PlayerActs(gameFst, new GameAction.Attack(Given.Player1Id, new Coords(1, 0), new Coords(2, 0)));
+        When.PlayerEndsAttackingPhase(gameFst, Given.Player1Id);
+        When.PlayerReinforces(gameFst, new GameAction.Reinforce(Given.Player1Id, new Coords(1, 0), new Coords(2, 0), 2));
+        When.PlayerEndsReinforcingPhase(gameFst, Given.Player1Id);
+        // DebugBoard(gameFst.GetState(), 6);
+
+        Then.TurnIsPlayer2(gameFst.GetState());
+        Then.TileIs(gameFst, new Coords(0, 0), TileOwner.Player1, 2);
+        Then.TileIs(gameFst, new Coords(0, 1), TileOwner.Player1, 2);
+        Then.TileIs(gameFst, new Coords(1, 0), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(1, 1), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(2, 0), TileOwner.Player1, 2);
+        Then.TileIs(gameFst, new Coords(2, 1), TileOwner.Player2, 2);
+
+        When.PlayerEndsAttackingPhase(gameFst, Given.Player2Id);
+        When.PlayerEndsReinforcingPhase(gameFst, Given.Player2Id);
+        // DebugBoard(gameFst.GetState(), 7);
+
+        Then.TurnIsPlayer1(gameFst.GetState());
+        Then.TileIs(gameFst, new Coords(0, 0), TileOwner.Player1, 3);
+        Then.TileIs(gameFst, new Coords(0, 1), TileOwner.Player1, 3);
+        Then.TileIs(gameFst, new Coords(1, 0), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(1, 1), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(2, 0), TileOwner.Player1, 3);
+        Then.TileIs(gameFst, new Coords(2, 1), TileOwner.Player2, 2);
+
+        When.PlayerAttacks(gameFst, new GameAction.Attack(Given.Player1Id, new Coords(2, 0), new Coords(2, 1)));
+        When.PlayerAttacks(gameFst, new GameAction.Attack(Given.Player1Id, new Coords(2, 0), new Coords(2, 1)));
+        // DebugBoard(gameFst.GetState(), 8);
+
+        Then.GameIsOverWithWinner(gameFst.GetState(), Given.Player1Id);
+        Then.TileIs(gameFst, new Coords(0, 0), TileOwner.Player1, 3);
+        Then.TileIs(gameFst, new Coords(0, 1), TileOwner.Player1, 3);
+        Then.TileIs(gameFst, new Coords(1, 0), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(1, 1), TileOwner.Unowned, 0);
+        Then.TileIs(gameFst, new Coords(2, 0), TileOwner.Player1, 3);
+        Then.TileIs(gameFst, new Coords(2, 1), TileOwner.Unowned, 0);
+    }
+
+    void DebugBoard(GameState gameState, int turn)
+    {
+        Console.WriteLine($"Turn {turn}");
+        var tiles = gameState.Hexgrid.EnumerateCoordsByColumn().Select(c => gameState.Hexgrid.GetTileAt(c));
+
+        foreach (var tile in tiles)
+        {
+            Console.WriteLine(tile);
+        }
+        Console.WriteLine();
     }
 }
 
@@ -555,12 +671,12 @@ internal static class Given
         return GameRules.CreateFst(state, new GameContext(AMaxDiceRoller(), AMinDiceRoller()));
     }
 
-    internal static GameFst AFullBoardInReinforcePhase()
+    internal static GameFst AFullBoardInReinforcePhase(string playerIdForCurrentTurn = Player1Id)
     {
         var state = new GameState(
             Player1Id,
             Player2Id,
-            Player1Id,
+            playerIdForCurrentTurn,
             TurnPhase.Reinforcing,
             GameMaps.TinyGrasslandFullyPopulated(),
             new GameStatus.Ongoing());
@@ -623,6 +739,11 @@ internal static class Given
 
 internal static class When
 {
+    internal static void GameStarts(GameFst gameFst)
+    {
+        gameFst.ApplyEvent(new GameEvent.GameStarted());
+    }
+
     internal static object PlayerActs(GameFst gameFst, GameAction action)
     {
         return gameFst.HandleCommand(action);
@@ -800,6 +921,13 @@ internal static class Then
     {
         var tileOwner = gameState.Hexgrid.GetTileAt(from)?.Owner;
         Assert.Equal(expectedOwner, tileOwner);
+    }
+
+    internal static void TileIs(GameFst fst, Coords coords, TileOwner expectedOwner, int expectedNumUnits)
+    {
+        var tile = fst.GetState().Hexgrid.GetTileAt(coords);
+        Assert.Equal(expectedOwner, tile.Owner);
+        Assert.Equal(expectedNumUnits, tile.NumUnits);
     }
 
     internal static void ResultIsCannotAttackUnownedTile(object result, string playerId, Coords coords)

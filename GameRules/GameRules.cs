@@ -20,12 +20,7 @@ public static class GameRules
             hexgrid,
             new GameStatus.Ongoing());
 
-        return new Fst<GameState, GameAction, GameEvent, GameError, GameContext>(
-            HandleCommand,
-            Transition,
-            context,
-            initialState
-        );
+        return CreateFst(initialState, context);
     }
 
     public static Fst<GameState, GameAction, GameEvent, GameError, GameContext> CreateFst(
@@ -240,6 +235,7 @@ public static class GameRules
     {
         return evt switch
         {
+            GameEvent.GameStarted e => ApplyGameStarted(state, e),
             GameEvent.PlayerAttacked e => ApplyPlayerAttacked(state, e),
             GameEvent.PlayerEndedAttackPhase e => ApplyPlayerEndedAttackPhase(state, e),
             GameEvent.PlayerReinforced e => ApplyPlayerReinforced(state, e),
@@ -247,6 +243,13 @@ public static class GameRules
             GameEvent.PlayerResigned e => ApplyPlayerResigned(state, e),
             _ => state,
         };
+    }
+
+    private static GameState ApplyGameStarted(GameState state, GameEvent.GameStarted e)
+    {
+        AddStartOfTurnUnits(state, TileOwner.Player1);
+
+        return state;
     }
 
     private static GameState ApplyPlayerAttacked(GameState state, GameEvent.PlayerAttacked e)
@@ -296,8 +299,16 @@ public static class GameRules
         var newFromQuantity = fromTile.NumUnits - e.Quantity;
         var newToQuantity = toTile.NumUnits + e.Quantity;
 
-        state.Hexgrid.SetTileAt(e.From.Q, e.From.R, fromTile with { NumUnits = newFromQuantity });
-        state.Hexgrid.SetTileAt(e.To.Q, e.To.R, toTile with { NumUnits = newToQuantity });
+        var newFromOwner = newFromQuantity == 0
+            ? TileOwner.Unowned
+            : fromTile.Owner;
+
+        var newToOwner = newToQuantity > 0
+            ? fromTile.Owner
+            : TileOwner.Unowned;
+
+        state.Hexgrid.SetTileAt(e.From.Q, e.From.R, fromTile with { Owner = newFromOwner, NumUnits = newFromQuantity });
+        state.Hexgrid.SetTileAt(e.To.Q, e.To.R, toTile with { Owner = newToOwner, NumUnits = newToQuantity });
 
         return state;
     }
@@ -312,18 +323,7 @@ public static class GameRules
             ? TileOwner.Player1
             : TileOwner.Player2;
 
-        foreach (var coords in state.Hexgrid.EnumerateCoordsByColumn())
-        {
-            var tile = state.Hexgrid.GetTileAt(coords.Q, coords.R);
-            if (tile == null || tile.Owner != tileOwnerForNewArmies)
-            {
-                continue;
-            }
-
-            var newNumUnits = Math.Min(tile.NumUnits + 1, TileUnitLimits.Compute(tile));
-
-            state.Hexgrid.SetTileAt(coords.Q, coords.R, tile with { NumUnits = newNumUnits });
-        }
+        AddStartOfTurnUnits(state, tileOwnerForNewArmies);
 
         return state with {
             PlayerIdForCurrentTurn = nextPlayerTurn,
@@ -340,6 +340,22 @@ public static class GameRules
         return state with {
             Status = new GameStatus.Completed(new GameOutcome.Winner(winner)),
         };
+    }
+
+    static void AddStartOfTurnUnits(GameState state, TileOwner tileOwnerForNewArmies)
+    {
+        foreach (var coords in state.Hexgrid.EnumerateCoordsByColumn())
+        {
+            var tile = state.Hexgrid.GetTileAt(coords.Q, coords.R);
+            if (tile == null || tile.Owner != tileOwnerForNewArmies)
+            {
+                continue;
+            }
+
+            var newNumUnits = Math.Min(tile.NumUnits + 1, TileUnitLimits.Compute(tile));
+
+            state.Hexgrid.SetTileAt(coords.Q, coords.R, tile with { NumUnits = newNumUnits });
+        }
     }
 }
 
@@ -458,6 +474,7 @@ public abstract record GameEvent
 {
     private GameEvent() {}
 
+    public sealed record GameStarted() : GameEvent;
     public sealed record PlayerResigned(string PlayerId) : GameEvent;
     public sealed record PlayerAttacked(string PlayerId, Coords From, Coords To, int AttackerRoll, int DefenderRoll, int FromLost, int ToLost) : GameEvent;
     public sealed record PlayerEndedAttackPhase(string PlayerId) : GameEvent;
