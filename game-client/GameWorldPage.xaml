@@ -11,8 +11,7 @@
             x:Name="DrawingCanvas"
             HorizontalOptions="FillAndExpand"
             VerticalOptions="FillAndExpand"
-            Drawable="{Binding Drawable}"
-            BackgroundColor="LightGray">
+            Drawable="{Binding Drawable}">
         </GraphicsView>
     </Grid>
 

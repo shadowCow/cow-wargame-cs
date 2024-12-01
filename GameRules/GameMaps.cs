@@ -8,36 +8,42 @@ public static class GameMaps
     {
         var grid = new Hexgrid<Tile>(6, 6);
 
+        grid.SetTileAt(0, 0, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(0, 1, Tile.Create(TileTerrain.Forest));
         grid.SetTileAt(0, 2, Tile.Create(TileTerrain.Forest));
         grid.SetTileAt(0, 3, Tile.Create(TileTerrain.Forest));
         grid.SetTileAt(0, 4, Tile.Create(TileTerrain.Forest));
         grid.SetTileAt(0, 5, Tile.Create(TileTerrain.Forest));
 
+        grid.SetTileAt(1, 0, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(1, 1, Tile.Create(TileTerrain.Forest));
         grid.SetTileAt(1, 2, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(1, 3, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(1, 4, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(1, 5, Tile.Create(TileTerrain.Forest));
 
+        grid.SetTileAt(2, 0, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(2, 1, Tile.Create(TileTerrain.Water));
         grid.SetTileAt(2, 2, Tile.Create(TileTerrain.Mountain));
         grid.SetTileAt(2, 3, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(2, 4, Tile.Create(TileTerrain.Mountain));
         grid.SetTileAt(2, 5, Tile.Create(TileTerrain.Water));
 
+        grid.SetTileAt(3, 0, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(3, 1, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(3, 2, Tile.Create(TileTerrain.Water));
         grid.SetTileAt(3, 3, Tile.Create(TileTerrain.Water));
         grid.SetTileAt(3, 4, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(3, 5, Tile.Create(TileTerrain.Forest));
 
+        grid.SetTileAt(4, 0, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(4, 1, Tile.Create(TileTerrain.Mountain));
         grid.SetTileAt(4, 2, Tile.Create(TileTerrain.Mountain));
         grid.SetTileAt(4, 3, Tile.Create(TileTerrain.Water));
         grid.SetTileAt(4, 4, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(4, 5, Tile.Create(TileTerrain.Forest));
 
+        grid.SetTileAt(5, 0, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(5, 1, Tile.Create(TileTerrain.Forest));
         grid.SetTileAt(5, 2, Tile.Create(TileTerrain.Grassland));
         grid.SetTileAt(5, 3, Tile.Create(TileTerrain.Grassland));
