@@ -7,7 +7,7 @@
         VerticalOptions="Fill"
     >
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="300" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
@@ -15,6 +15,7 @@
             Grid.Column="0"
             BackgroundColor="Black"
             Padding="10"
+            Spacing="10"
         >
             <Label
                 Text="{Binding CurrentPlayerTurn}"
@@ -23,6 +24,45 @@
             <Label
                 Text="{Binding TurnPhase}"
                 FontSize="24"
+            />
+
+            <Label
+                Text="From"
+                FontSize="24"  
+            />
+            <Picker
+                x:Name="FromPicker"
+                SelectedIndexChanged="OnFromPickerSelectedIndexChanged"
+                ItemDisplayBinding="{Binding .}">
+            </Picker>
+            <Label
+                Text="To"
+                FontSize="24"  
+            />
+            <Picker
+                x:Name="ToPicker"
+                SelectedIndexChanged="OnToPickerSelectedIndexChanged"
+                ItemDisplayBinding="{Binding .}">
+            </Picker>
+
+            <Label
+                Text="Reinforce Quantity"
+                FontSize="24"  
+            />
+            <Picker
+                x:Name="ReinforceQuantityPicker"
+                SelectedIndexChanged="OnReinforceQuantityPickerSelectedIndexChanged"
+                ItemDisplayBinding="{Binding .}">
+            </Picker>
+
+            <Button
+                Text="Perform Action"
+                Clicked="OnPerformActionClicked"
+            />
+
+            <Button
+                Text="End Turn Phase"
+                Clicked="OnEndTurnPhaseClicked"
             />
         </StackLayout>
 

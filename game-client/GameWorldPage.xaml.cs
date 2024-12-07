@@ -1,6 +1,8 @@
 ﻿using CowFst;
 using CowDice;
 using GameRules;
+using CowHexgrid;
+using System.Collections.ObjectModel;
 
 namespace game_client;
 
@@ -35,17 +37,89 @@ public partial class GameWorldPage : ContentPage
 
 		BindingContext = new StatusPanel();
 
+		// TODO - source from game state
+        var from = new ObservableCollection<Coords>
+        {
+            new(0, 0),
+			new(0, 1),
+			new(1, 0),
+        };
+        FromPicker.ItemsSource = from;
+		FromPicker.SelectedIndex = 0;
+
+		// TODO - source from game state
+		var to = new ObservableCollection<Coords>
+		{
+			new (0, 2),
+			new (1, 1),
+			new (2, 0),
+		};
+		ToPicker.ItemsSource = to;
+		ToPicker.SelectedIndex = 0;
+
+		// TODO - source from game state
+		var reinforceQuantity = new ObservableCollection<int>
+		{
+			0,
+			1,
+			2,
+		};
+		ReinforceQuantityPicker.ItemsSource = reinforceQuantity;
+		ReinforceQuantityPicker.SelectedIndex = 0;
+
 		var tapGesture = new TapGestureRecognizer();
         tapGesture.Tapped += OnCanvasTapped; // Event handler for tap
         DrawingCanvas.GestureRecognizers.Add(tapGesture);
 	}
+
+	private void OnFromPickerSelectedIndexChanged(object sender, EventArgs e)
+    {
+        var selectedCoords = (Coords)FromPicker.SelectedItem;
+        if (selectedCoords != null)
+        {
+            // Do something with the selected person
+            Console.WriteLine($"Selected From: ({selectedCoords.Q},{selectedCoords.R})");
+        }
+    }
+
+	private void OnToPickerSelectedIndexChanged(object sender, EventArgs e)
+    {
+        var selectedCoords = (Coords)FromPicker.SelectedItem;
+        if (selectedCoords != null)
+        {
+            // Do something with the selected person
+            Console.WriteLine($"Selected To: ({selectedCoords.Q},{selectedCoords.R})");
+        }
+    }
+
+	private void OnReinforceQuantityPickerSelectedIndexChanged(object sender, EventArgs e)
+    {
+        var selectedQuantity = (int?)ReinforceQuantityPicker.SelectedItem;
+        if (selectedQuantity != null)
+        {
+            // Do something with the selected person
+            Console.WriteLine($"Selected Quantity: {selectedQuantity}");
+        }
+    }
+
+	private void OnPerformActionClicked(object sender, EventArgs e)
+    {
+        // Code to handle the button click
+        Console.WriteLine("Perform Action clicked!");
+    }
+
+	private void OnEndTurnPhaseClicked(object sender, EventArgs e)
+    {
+        // Code to handle the button click
+        Console.WriteLine("End Turn Phase clicked!");
+    }
 
 	private void OnCanvasTapped(object? sender, TappedEventArgs e)
     {
         // Handle the tap event
         var tapLocation = e.GetPosition(DrawingCanvas);
         Console.WriteLine($"Canvas tapped at: X={tapLocation?.X}, Y={tapLocation?.Y}");
-        
+
 		DrawingCanvas.Invalidate();
     }
 }

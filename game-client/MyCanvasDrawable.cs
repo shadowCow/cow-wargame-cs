@@ -64,13 +64,13 @@ public class MyCanvasDrawable(GameFst gameFst, Color backgroundColor) : IDrawabl
                 if (tile is not null)
                 {
                     Console.WriteLine($"drawing tile {c},{r}");
-                    DrawHexTile(canvas, cx, cy, radius, apothem, tile);
+                    DrawHexTile(canvas, cx, cy, radius, apothem, tile, c, r);
                 }
             }
         }
     }
 
-    void DrawHexTile(ICanvas canvas, float centerX, float centerY, float radius, float apothem, Tile tile)
+    void DrawHexTile(ICanvas canvas, float centerX, float centerY, float radius, float apothem, Tile tile, int q, int r)
     {
         // Path for the hexagon
         PathF path = new();
@@ -104,8 +104,10 @@ public class MyCanvasDrawable(GameFst gameFst, Color backgroundColor) : IDrawabl
         canvas.DrawPath(path);
 
         // draw text overlay
-        canvas.FontSize = 16;
+        canvas.FontSize = 20;
         canvas.FontColor = Colors.Black;
+        var coordsText = $"{q},{r}";
+        var text = coordsText;
         if (tile.Owner != TileOwner.Unowned)
         {
             var playerText = tile.Owner == TileOwner.Player1
@@ -114,21 +116,22 @@ public class MyCanvasDrawable(GameFst gameFst, Color backgroundColor) : IDrawabl
 
             var unitText = tile.NumUnits.ToString();
 
-            var text = $"{playerText}\n{unitText}";
-            var textLeft = centerX - (radius/2);
-            var textTop = centerY - (apothem/2);
-            var textWidthBound = radius;
-            var textHeightBound = apothem;
-            Console.WriteLine($"drawing string: {text}, {textLeft}, {textTop}, {textWidthBound}, {textHeightBound}");
-            canvas.DrawString(
-                text,
-                textLeft,
-                textTop,
-                textWidthBound,
-                textHeightBound,
-                HorizontalAlignment.Center,
-                VerticalAlignment.Center);
+            text = $"{coordsText}\n{playerText}\n{unitText}";
         }
+
+        var textLeft = centerX - (radius/2);
+        var textTop = centerY - (apothem*3/4);
+        var textWidthBound = radius;
+        var textHeightBound = apothem*3/2;
+        Console.WriteLine($"drawing string: {text}, {textLeft}, {textTop}, {textWidthBound}, {textHeightBound}");
+        canvas.DrawString(
+            text,
+            textLeft,
+            textTop,
+            textWidthBound,
+            textHeightBound,
+            HorizontalAlignment.Center,
+            VerticalAlignment.Center);
     }
 
     static float ComputeHexRadiusSoGridFillsSpace(int numCols, int numRows, float availableWidth, float availableHeight)
