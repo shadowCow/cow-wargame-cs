@@ -33,6 +33,8 @@ public partial class GameWorldPage : ContentPage
 		DrawingCanvas.Drawable = Drawable;
 		DrawingCanvas.BackgroundColor = backgroundColor;
 
+		BindingContext = new StatusPanel();
+
 		var tapGesture = new TapGestureRecognizer();
         tapGesture.Tapped += OnCanvasTapped; // Event handler for tap
         DrawingCanvas.GestureRecognizers.Add(tapGesture);
