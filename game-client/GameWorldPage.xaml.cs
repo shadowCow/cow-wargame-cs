@@ -48,16 +48,19 @@ public partial class GameWorldPage : ContentPage
 
     private static GameFst NewGame()
     {
-		var hexgrid = GameMaps.MapOne();
+		var hexgrid = GameMaps.MiniMapOne();
 		var p1StartingTile = hexgrid.GetTileAt(0, 0)!;
-		var p2StartingTile = hexgrid.GetTileAt(5, 5)!;
+		var p2StartingTile = hexgrid.GetTileAt(3, 3)!;
 		hexgrid.SetTileAt(0, 0, p1StartingTile with { Owner = TileOwner.Player1, NumUnits = 2 });
-		hexgrid.SetTileAt(5, 5, p2StartingTile with { Owner = TileOwner.Player2, NumUnits = 2 });
-		return GameRules.GameRules.CreateFst(
+		hexgrid.SetTileAt(3, 3, p2StartingTile with { Owner = TileOwner.Player2, NumUnits = 2 });
+		var gameFst = GameRules.GameRules.CreateFst(
             "player1",
             "player2",
             hexgrid,
             new GameContext(new RandomDiceRoller(), new RandomDiceRoller()));
+        gameFst.ApplyEvent(new GameEvent.GameStarted());
+
+        return gameFst;
     }
 
 	private void OnFromPickerSelectedIndexChanged(object sender, EventArgs e)
@@ -142,8 +145,61 @@ public partial class GameWorldPage : ContentPage
 
 	private void OnPerformActionClicked(object sender, EventArgs e)
     {
-        // Code to handle the button click
-        Console.WriteLine("Perform Action clicked!");
+        switch (gameFst.GetState().TurnPhase)
+        {
+            case TurnPhase.Attacking:
+            {
+                var fromCoords = (Coords)FromPicker.SelectedItem;
+                var toCoords = (Coords)ToPicker.SelectedItem;
+
+                if (fromCoords is null)
+                {
+                    DisplayErrorMessage("Select tile to attack from");
+                    return;
+                }
+                if (toCoords is null)
+                {
+                    DisplayErrorMessage("Select tile to attack");
+                    return;
+                }
+
+                HandleGameAction(new GameAction.Attack(
+                    gameFst.GetState().PlayerIdForCurrentTurn,
+                    fromCoords,
+                    toCoords));
+                break;
+            }
+            case TurnPhase.Reinforcing:
+            {
+                var fromCoords = (Coords)FromPicker.SelectedItem;
+                var toCoords = (Coords)ToPicker.SelectedItem;
+                var quantity = (int?)ReinforceQuantityPicker.SelectedItem;
+
+                if (fromCoords is null)
+                {
+                    DisplayErrorMessage("Select tile to reinforce from");
+                    return;
+                }
+                if (toCoords is null)
+                {
+                    DisplayErrorMessage("Select tile to reinforce");
+                    return;
+                }
+                if (quantity is null)
+                {
+                    DisplayErrorMessage("Select quantity to move");
+                    return;
+                }
+
+                HandleGameAction(new GameAction.Reinforce(
+                    gameFst.GetState().PlayerIdForCurrentTurn,
+                    fromCoords,
+                    toCoords,
+                    quantity.Value));
+
+                break;
+            }
+        };
     }
 
 	private void OnEndTurnPhaseClicked(object sender, EventArgs e)
@@ -157,6 +213,19 @@ public partial class GameWorldPage : ContentPage
                 HandleGameAction(new GameAction.EndReinforcePhase(gameFst.GetState().PlayerIdForCurrentTurn));
                 break;
         };
+    }
+
+    private async void OnResignClicked(object sender, EventArgs e)
+    {
+        bool answer = await DisplayAlert("Confirm Resignation", 
+                                         "Are you sure you want to resign?", 
+                                         "Yes", 
+                                         "No");
+
+        if (answer)
+        {
+            HandleGameAction(new GameAction.Resign(gameFst.GetState().PlayerIdForCurrentTurn));
+        }
     }
 
     private void HandleGameAction(GameAction action)
@@ -175,10 +244,22 @@ public partial class GameWorldPage : ContentPage
 
     private void OnGameStateChanged(GameState gameState)
     {
-        if (gameState.IsGameOver())
+        switch (gameState.Status)
         {
-            DisplayGameOver();
-            return;
+            case GameStatus.Completed c:
+                var winnerMessage = c.Outcome switch
+                {
+                    GameOutcome.Winner w => $"{w.PlayerId} wins!",
+                    GameOutcome.Tie t => "Tie game!",
+                    _ => "", // should never get here
+                };
+
+                DisplayGameOver(winnerMessage);
+
+                // yes, we do want to return
+                return;
+            default:
+                break;
         }
 
         CurrentPlayerTurnLabel.Text = gameState.PlayerIdForCurrentTurn;
@@ -205,11 +286,21 @@ public partial class GameWorldPage : ContentPage
         FromPicker.SelectedIndex = fromOptions.Count > 0
             ? 0
             : -1;
+
+        DrawingCanvas.Invalidate();
     }
 
-    private void DisplayGameOver()
+    private void DisplayGameOver(string message)
     {
-        Console.WriteLine($"Game Over");
+        var task = DisplayAlert(
+            "Game Over", 
+            $"{message}",
+            "Return to Main Menu");
+
+        task.ContinueWith(async t =>
+        {
+            await Navigation.PopAsync();
+        }, TaskScheduler.FromCurrentSynchronizationContext());
     }
     
     private static bool IsOwnedByCurrentPlayer(Tile? t, GameState gameState)
@@ -221,6 +312,15 @@ public partial class GameWorldPage : ContentPage
     private void DisplayError(Result<GameEvent, GameError>.Err e)
     {
         Console.WriteLine($"Error: {e.Error}");
+    }
+
+    private void DisplayErrorMessage(string message)
+    {
+        DisplayAlert(
+            "Error",
+            message,
+            "OK"
+        );
     }
 
     private void OnCanvasTapped(object? sender, TappedEventArgs e)

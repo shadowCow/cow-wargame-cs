@@ -66,6 +66,11 @@
                 Text="End Turn Phase"
                 Clicked="OnEndTurnPhaseClicked"
             />
+
+            <Button
+                Text="Resign"
+                Clicked="OnResignClicked"
+            />
         </StackLayout>
 
         <GraphicsView
