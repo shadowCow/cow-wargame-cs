@@ -399,6 +399,18 @@ public static class TileUnitLimits
             _ => 0,
         };
     }
+
+    public static int MaximumReinforcementQuantity(Tile? from, Tile? to)
+    {
+        if (from is null || to is null)
+        {
+            return 0;
+        }
+        
+        var toCapacity = Compute(to) - to.NumUnits;
+
+        return Math.Min(from.NumUnits, toCapacity);
+    }
 }
 
 public record GameState(

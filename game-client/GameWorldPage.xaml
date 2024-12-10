@@ -18,11 +18,13 @@
             Spacing="10"
         >
             <Label
-                Text="{Binding CurrentPlayerTurn}"
+                x:Name="CurrentPlayerTurnLabel"
+                Text="Player 1"
                 FontSize="24"
             />
             <Label
-                Text="{Binding TurnPhase}"
+                x:Name="TurnPhaseLabel"
+                Text="Attacking"
                 FontSize="24"
             />
 
