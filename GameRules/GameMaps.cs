@@ -144,6 +144,22 @@ public static class GameMaps
         return grid;
     }
 
+    public static Hexgrid<Tile> TinyWithAllTerrain()
+    {
+        var grid = new Hexgrid<Tile>(3, 2);
+
+        grid.SetTileAt(0, 0, Tile.Create(TileTerrain.Grassland));
+        grid.SetTileAt(0, 1, Tile.Create(TileTerrain.Forest));
+
+        grid.SetTileAt(1, 0, Tile.Create(TileTerrain.Forest));
+        grid.SetTileAt(1, 1, Tile.Create(TileTerrain.Mountain));
+
+        grid.SetTileAt(2, 0, Tile.Create(TileTerrain.Mountain));
+        grid.SetTileAt(2, 1, Tile.Create(TileTerrain.Grassland));
+
+        return grid;
+    }
+
     public static Hexgrid<Tile> TiniestMap(TileTerrain player1Terrain, int player1Units, TileTerrain player2Terrain, int player2Units)
     {
         var grid = new Hexgrid<Tile>(2, 1);

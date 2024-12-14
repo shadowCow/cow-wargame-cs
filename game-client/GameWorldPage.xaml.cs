@@ -48,12 +48,17 @@ public partial class GameWorldPage : ContentPage
 
     private static GameFst NewGame()
     {
-		var hexgrid = GameMaps.MiniMapOne();
-		var p1StartingTile = hexgrid.GetTileAt(0, 0)!;
-		var p2StartingTile = hexgrid.GetTileAt(3, 3)!;
-		hexgrid.SetTileAt(0, 0, p1StartingTile with { Owner = TileOwner.Player1, NumUnits = 2 });
-		hexgrid.SetTileAt(3, 3, p2StartingTile with { Owner = TileOwner.Player2, NumUnits = 2 });
-		var gameFst = GameRules.GameRules.CreateFst(
+        var hexgrid = GameMaps.MapOne();
+
+        var p1StartingCoords = new Coords(0, 0);
+        var p2StartingCoords = new Coords(hexgrid.GetNumColumns() - 1, hexgrid.GetNumRows() - 1);
+
+		var p1StartingTile = hexgrid.GetTileAt(p1StartingCoords)!;
+		var p2StartingTile = hexgrid.GetTileAt(p2StartingCoords)!;
+		hexgrid.SetTileAt(p1StartingCoords.Q, p1StartingCoords.R, p1StartingTile with { Owner = TileOwner.Player1, NumUnits = 2 });
+		hexgrid.SetTileAt(p2StartingCoords.Q, p2StartingCoords.R, p2StartingTile with { Owner = TileOwner.Player2, NumUnits = 2 });
+		
+        var gameFst = GameRules.GameRules.CreateFst(
             "player1",
             "player2",
             hexgrid,
@@ -244,24 +249,6 @@ public partial class GameWorldPage : ContentPage
 
     private void OnGameStateChanged(GameState gameState)
     {
-        switch (gameState.Status)
-        {
-            case GameStatus.Completed c:
-                var winnerMessage = c.Outcome switch
-                {
-                    GameOutcome.Winner w => $"{w.PlayerId} wins!",
-                    GameOutcome.Tie t => "Tie game!",
-                    _ => "", // should never get here
-                };
-
-                DisplayGameOver(winnerMessage);
-
-                // yes, we do want to return
-                return;
-            default:
-                break;
-        }
-
         CurrentPlayerTurnLabel.Text = gameState.PlayerIdForCurrentTurn;
         TurnPhaseLabel.Text = gameState.TurnPhase.ToString();
 
@@ -288,6 +275,24 @@ public partial class GameWorldPage : ContentPage
             : -1;
 
         DrawingCanvas.Invalidate();
+
+        switch (gameState.Status)
+        {
+            case GameStatus.Completed c:
+                var winnerMessage = c.Outcome switch
+                {
+                    GameOutcome.Winner w => $"{w.PlayerId} wins!",
+                    GameOutcome.Tie t => "Tie game!",
+                    _ => "", // should never get here
+                };
+
+                DisplayGameOver(winnerMessage);
+
+                // yes, we do want to return
+                return;
+            default:
+                break;
+        }
     }
 
     private void DisplayGameOver(string message)
