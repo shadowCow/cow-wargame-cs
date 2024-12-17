@@ -183,6 +183,10 @@ public static class GameRules
         {
             return new Result<GameEvent, GameError>.Err(new GameError.CannotReinforceTileType(a.PlayerId, a.To, toTile.Terrain));
         }
+        if (toTile.NumUnits + a.Quantity > TileUnitLimits.Compute(toTile))
+        {
+            return new Result<GameEvent, GameError>.Err(new GameError.CannotReinforceTileBeyondCapacity(a.PlayerId, a.To, TileUnitLimits.Compute(toTile)));
+        }
 
         return new Result<GameEvent, GameError>.Success(new GameEvent.PlayerReinforced(a.PlayerId, a.From, a.To, a.Quantity));
     }
@@ -389,6 +393,10 @@ public static class RollingBonuses
 
 public static class TileUnitLimits
 {
+    public const int GrasslandCapacity = 10;
+    public const int ForestCapacity = 7;
+    public const int MountainCapacity = 4;
+
     public static int Compute(Tile tile)
     {
         return tile.Terrain switch
@@ -406,7 +414,7 @@ public static class TileUnitLimits
         {
             return 0;
         }
-        
+
         var toCapacity = Compute(to) - to.NumUnits;
 
         return Math.Min(from.NumUnits, toCapacity);
@@ -512,6 +520,7 @@ public abstract record GameError
     public sealed record CannotReinforceNonAdjacentTile(string PlayerId, Coords To) : GameError;
     public sealed record CannotReinforceToOpponentTile(string PlayerId, Coords To) : GameError;
     public sealed record CannotReinforceTileType(string PlayerId, Coords Coords, TileTerrain Terrain) : GameError;
+    public sealed record CannotReinforceTileBeyondCapacity(string PlayerId, Coords Coords, int Capacity) : GameError;
     public sealed record CannotActWhenGameIsOver(string PlayerId) : GameError;
     public sealed record TileOutOfBounds(Coords Coords) : GameError;
     public sealed record ActionOutOfPhase(string PlayerId, TurnPhase CurrentPhase, TurnPhase PhaseNeededForAction) : GameError;

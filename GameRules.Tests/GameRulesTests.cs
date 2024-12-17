@@ -345,10 +345,22 @@ public class GameRulesTests
         Then.UnitCountOnTileIs(gameFst.GetState(), action.To, 0);
     }
 
-    [Fact(Skip = "Not implemented yet")]
-    public void CannotReinforceTileAtCapacity()
+    [Theory]
+    [InlineData(TileTerrain.Grassland, TileUnitLimits.GrasslandCapacity)]
+    [InlineData(TileTerrain.Forest, TileUnitLimits.ForestCapacity)]
+    [InlineData(TileTerrain.Mountain, TileUnitLimits.MountainCapacity)]
+    public void CannotReinforceTileAtCapacity(TileTerrain terrain, int units)
     {
+        var gameFst = Given.AFullyPopulatedBoardInReinforcePhase(
+            Given.Player1Id,
+            terrain,
+            units
+        );
 
+        var action = new GameAction.Reinforce(Given.Player1Id, new Coords(0, 0), new Coords(0, 1), 1);
+        var result = When.PlayerReinforces(gameFst, action);
+
+        Then.ResultIsCannotReinforceTileBeyondCapacity(result, Given.Player1Id, action.To, units);
     }
 
     [Fact]
@@ -684,6 +696,22 @@ internal static class Given
         return GameRules.CreateFst(state, new GameContext(AMaxDiceRoller(), AMinDiceRoller()));
     }
 
+    internal static GameFst AFullyPopulatedBoardInReinforcePhase(
+        string playerIdForCurrentTurn = Player1Id,
+        TileTerrain terrain = TileTerrain.Grassland,
+        int unitsPerTile = 1)
+    {
+        var state = new GameState(
+            Player1Id,
+            Player2Id,
+            playerIdForCurrentTurn,
+            TurnPhase.Reinforcing,
+            GameMaps.TinyFullyOwned(terrain, unitsPerTile),
+            new GameStatus.Ongoing());
+
+        return GameRules.CreateFst(state, new GameContext(AMaxDiceRoller(), AMinDiceRoller()));
+    }
+
     internal static GameFst AFullBoardInAttackPhase(
         IDiceRoller attackerDiceRoller,
         IDiceRoller defenderDiceRoller,
@@ -962,6 +990,12 @@ internal static class Then
     internal static void ResultIsCannotActWhenGameIsOver(object result, string playerId)
     {
         var expectedError = new GameError.CannotActWhenGameIsOver(playerId);
+        ExpectError(result, expectedError);
+    }
+
+    internal static void ResultIsCannotReinforceTileBeyondCapacity(object result, string playerId, Coords coords, int capacity)
+    {
+        var expectedError = new GameError.CannotReinforceTileBeyondCapacity(playerId, coords, capacity);
         ExpectError(result, expectedError);
     }
 }

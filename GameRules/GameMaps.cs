@@ -80,6 +80,22 @@ public static class GameMaps
         return grid;
     }
 
+    public static Hexgrid<Tile> TinyFullyOwned(TileTerrain terrain, int unitsPerTile)
+    {
+        var grid = new Hexgrid<Tile>(3, 2);
+
+        grid.SetTileAt(0, 0, new Tile(TileOwner.Player1, terrain, unitsPerTile));
+        grid.SetTileAt(0, 1, new Tile(TileOwner.Player1, terrain, unitsPerTile));
+
+        grid.SetTileAt(1, 0, new Tile(TileOwner.Player1, terrain, unitsPerTile));
+        grid.SetTileAt(1, 1, new Tile(TileOwner.Player2, terrain, unitsPerTile));
+
+        grid.SetTileAt(2, 0, new Tile(TileOwner.Player2, terrain, unitsPerTile));
+        grid.SetTileAt(2, 1, new Tile(TileOwner.Player2, terrain, unitsPerTile));
+
+        return grid;
+    }
+
     public static Hexgrid<Tile> TinyGrassland()
     {
         var grid = new Hexgrid<Tile>(3, 2);
